@@ -787,26 +787,27 @@
   }
 
   function loadSampleData() {
+    const baseTimestamp = Date.now();
     state.wallets = [
-      { id: 'wallet_spending', name: 'Personal Spending', type: 'spending', currency: 'PHP', icon: '👛', initialBalance: 15000.00, createdAt: 1 },
-      { id: 'wallet_ewallet', name: 'GCash / Maya Super App', type: 'ewallet', currency: 'PHP', icon: '📱', initialBalance: 8500.00, createdAt: 2 },
-      { id: 'wallet_savings', name: 'High-Yield Savings (SeaBank / Maya)', type: 'savings', currency: 'PHP', icon: '🏦', initialBalance: 50000.00, createdAt: 3 },
-      { id: 'wallet_crypto', name: 'Crypto Portfolio (BTC / ETH / SOL)', type: 'crypto', currency: 'USD', icon: '🪙', initialBalance: 3500.00, createdAt: 4 },
-      { id: 'wallet_stocks', name: 'US Equities & ETFs (GoTrade / PSEi)', type: 'investment', currency: 'USD', icon: '📈', initialBalance: 5000.00, createdAt: 5 },
-      { id: 'wallet_td', name: 'Maya 6.0% p.a. Time Deposit', type: 'time_deposit', currency: 'PHP', icon: '⏳', initialBalance: 100000.00, createdAt: 6 },
-      { id: 'wallet_cash', name: 'Physical Cash on Hand', type: 'cash', currency: 'PHP', icon: '💵', initialBalance: 5000.00, createdAt: 7 }
+      { id: 'wallet_spending', name: 'Personal Spending', type: 'spending', currency: 'PHP', icon: '👛', initialBalance: 15000.00, createdAt: baseTimestamp - 70 * 86400000 },
+      { id: 'wallet_ewallet', name: 'GCash / Maya Super App', type: 'ewallet', currency: 'PHP', icon: '📱', initialBalance: 8500.00, createdAt: baseTimestamp - 70 * 86400000 },
+      { id: 'wallet_savings', name: 'High-Yield Savings (SeaBank / Maya)', type: 'savings', currency: 'PHP', icon: '🏦', initialBalance: 50000.00, createdAt: baseTimestamp - 70 * 86400000 },
+      { id: 'wallet_crypto', name: 'Crypto Portfolio (BTC / ETH / SOL)', type: 'crypto', currency: 'USD', icon: '🪙', initialBalance: 3500.00, createdAt: baseTimestamp - 70 * 86400000 },
+      { id: 'wallet_stocks', name: 'US Equities & ETFs (GoTrade / PSEi)', type: 'investment', currency: 'USD', icon: '📈', initialBalance: 5000.00, createdAt: baseTimestamp - 70 * 86400000 },
+      { id: 'wallet_td', name: 'Maya 6.0% p.a. Time Deposit', type: 'time_deposit', currency: 'PHP', icon: '⏳', initialBalance: 100000.00, createdAt: baseTimestamp - 70 * 86400000 },
+      { id: 'wallet_cash', name: 'Physical Cash on Hand', type: 'cash', currency: 'PHP', icon: '💵', initialBalance: 5000.00, createdAt: baseTimestamp - 70 * 86400000 }
     ];
 
     state.transactions = [
-      { id: 'tx_demo_1', walletId: 'wallet_spending', date: getRelativeDateString(-65), item: 'Balance Brought Forward', type: 'credit', inputCurrency: 'PHP', inputAmount: 15000.00, exchangeRate: 1.0, credit: 15000.00, debit: 0, notes: 'Initial personal spending balance', createdAt: 1 },
-      { id: 'tx_demo_2', walletId: 'wallet_savings', date: getRelativeDateString(-55), item: 'Salary & Wages', type: 'credit', inputCurrency: 'PHP', inputAmount: 48000.00, exchangeRate: 1.0, credit: 48000.00, debit: 0, notes: 'Monthly earnings (Two months ago into savings)', createdAt: 2 },
-      { id: 'tx_demo_3', walletId: 'wallet_spending', date: getRelativeDateString(-45), item: 'Rent & Housing', type: 'debit', inputCurrency: 'PHP', inputAmount: 15000.00, exchangeRate: 1.0, credit: 0, debit: 15000.00, notes: 'Apartment rent from spending wallet', createdAt: 3 },
-      { id: 'tx_demo_4', walletId: 'wallet_savings', date: getRelativeDateString(-25), item: 'Salary & Wages', type: 'credit', inputCurrency: 'PHP', inputAmount: 48000.00, exchangeRate: 1.0, credit: 48000.00, debit: 0, notes: 'Monthly earnings (Last month into savings)', createdAt: 4 },
-      { id: 'tx_demo_5', walletId: 'wallet_cash', date: getRelativeDateString(-18), item: 'Groceries', type: 'debit', inputCurrency: 'PHP', inputAmount: 2500.00, exchangeRate: 1.0, credit: 0, debit: 2500.00, notes: 'Farmers market groceries with cash', createdAt: 5 },
-      { id: 'tx_demo_6', walletId: 'wallet_spending', date: getRelativeDateString(-12), item: 'Groceries', type: 'debit', inputCurrency: 'PHP', inputAmount: 4200.00, exchangeRate: 1.0, credit: 0, debit: 4200.00, notes: 'Supermarket supplies on card', createdAt: 6 },
-      { id: 'tx_demo_7', walletId: 'wallet_savings', date: getRelativeDateString(-4), item: 'Balance Reconciliation', type: 'credit', inputCurrency: 'PHP', inputAmount: 650.00, exchangeRate: 1.0, credit: 650.00, debit: 0, notes: 'Bank interest credited to savings (+₱650.00)', createdAt: 7 },
-      { id: 'tx_demo_8', walletId: 'wallet_cash', date: getRelativeDateString(-1), item: 'Dining & Food', type: 'debit', inputCurrency: 'PHP', inputAmount: 850.00, exchangeRate: 1.0, credit: 0, debit: 850.00, notes: 'Street food and coffee', createdAt: 8 },
-      { id: 'tx_demo_9', walletId: 'wallet_spending', date: getRelativeDateString(0), item: 'Software & Subscriptions', type: 'debit', inputCurrency: 'USD', inputAmount: 20.00, exchangeRate: 58.50, credit: 0, debit: 1170.00, notes: 'Online productivity tools ($20 USD @ 58.50)', createdAt: 9 }
+      { id: 'tx_demo_1', walletId: 'wallet_spending', date: getRelativeDateString(-65), item: 'Balance Brought Forward', type: 'credit', inputCurrency: 'PHP', inputAmount: 15000.00, exchangeRate: 1.0, credit: 15000.00, debit: 0, notes: 'Initial personal spending balance', createdAt: baseTimestamp - 65 * 86400000 },
+      { id: 'tx_demo_2', walletId: 'wallet_savings', date: getRelativeDateString(-55), item: 'Salary & Wages', type: 'credit', inputCurrency: 'PHP', inputAmount: 48000.00, exchangeRate: 1.0, credit: 48000.00, debit: 0, notes: 'Monthly earnings (Two months ago into savings)', createdAt: baseTimestamp - 55 * 86400000 },
+      { id: 'tx_demo_3', walletId: 'wallet_spending', date: getRelativeDateString(-45), item: 'Rent & Housing', type: 'debit', inputCurrency: 'PHP', inputAmount: 15000.00, exchangeRate: 1.0, credit: 0, debit: 15000.00, notes: 'Apartment rent from spending wallet', createdAt: baseTimestamp - 45 * 86400000 },
+      { id: 'tx_demo_4', walletId: 'wallet_savings', date: getRelativeDateString(-25), item: 'Salary & Wages', type: 'credit', inputCurrency: 'PHP', inputAmount: 48000.00, exchangeRate: 1.0, credit: 48000.00, debit: 0, notes: 'Monthly earnings (Last month into savings)', createdAt: baseTimestamp - 25 * 86400000 },
+      { id: 'tx_demo_5', walletId: 'wallet_cash', date: getRelativeDateString(-18), item: 'Groceries', type: 'debit', inputCurrency: 'PHP', inputAmount: 2500.00, exchangeRate: 1.0, credit: 0, debit: 2500.00, notes: 'Farmers market groceries with cash', createdAt: baseTimestamp - 18 * 86400000 },
+      { id: 'tx_demo_6', walletId: 'wallet_spending', date: getRelativeDateString(-12), item: 'Groceries', type: 'debit', inputCurrency: 'PHP', inputAmount: 4200.00, exchangeRate: 1.0, credit: 0, debit: 4200.00, notes: 'Supermarket supplies on card', createdAt: baseTimestamp - 12 * 86400000 },
+      { id: 'tx_demo_7', walletId: 'wallet_savings', date: getRelativeDateString(-4), item: 'Balance Reconciliation', type: 'credit', inputCurrency: 'PHP', inputAmount: 650.00, exchangeRate: 1.0, credit: 650.00, debit: 0, notes: 'Bank interest credited to savings (+₱650.00)', createdAt: baseTimestamp - 4 * 86400000 },
+      { id: 'tx_demo_8', walletId: 'wallet_cash', date: getRelativeDateString(-1), item: 'Dining & Food', type: 'debit', inputCurrency: 'PHP', inputAmount: 850.00, exchangeRate: 1.0, credit: 0, debit: 850.00, notes: 'Street food and coffee', createdAt: baseTimestamp - 1 * 86400000 },
+      { id: 'tx_demo_9', walletId: 'wallet_spending', date: getRelativeDateString(0), item: 'Software & Subscriptions', type: 'debit', inputCurrency: 'USD', inputAmount: 20.00, exchangeRate: 58.50, credit: 0, debit: 1170.00, notes: 'Online productivity tools ($20 USD @ 58.50)', createdAt: baseTimestamp }
     ];
 
     state.debts = JSON.parse(JSON.stringify(SAMPLE_DEBTS));

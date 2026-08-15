@@ -425,11 +425,17 @@
 
     const labels = [];
     const bufferValues = [];
-    const initialDateStr = getRelativeDateString(-30);
+    let defaultInitDate;
+    if (sortedChronological.length > 0 && sortedChronological[0].date) {
+      const firstTxDate = new Date(sortedChronological[0].date + 'T00:00:00');
+      defaultInitDate = new Date(firstTxDate.getTime() - 30 * 24 * 60 * 60 * 1000);
+    } else {
+      defaultInitDate = new Date(new Date().getTime() - 30 * 24 * 60 * 60 * 1000);
+    }
 
     const inflowQueue = [];
     if (initialBal > 0) {
-      inflowQueue.push({ date: new Date(initialDateStr + 'T00:00:00'), remaining: initialBal });
+      inflowQueue.push({ date: defaultInitDate, remaining: initialBal });
     }
 
     let lastDebitDate = null;

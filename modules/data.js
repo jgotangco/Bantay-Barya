@@ -49,7 +49,7 @@
       currency: 'PHP',
       icon: '👛',
       initialBalance: 0.00,
-      createdAt: 1
+      createdAt: Date.now()
     }
   ];
 

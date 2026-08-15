@@ -1133,6 +1133,7 @@
     setupHeroCarouselListeners,
     renderAllHeroCharts,
     initPinSecurity,
+    updatePinSettingsUI,
     detectDeviceType,
     initPwaAndShortcuts
   };

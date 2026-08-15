@@ -543,20 +543,13 @@
   function calculateSpendingBuffer(walletFilter = 'all') {
     let txList = state.transactions || [];
     let initialBal = 0;
-    let walletCreationDate = null;
 
     if (walletFilter !== 'all') {
       txList = txList.filter(t => t.walletId === walletFilter);
       const w = getWallet(walletFilter);
       initialBal = w ? (parseFloat(w.initialBalance) || 0) : 0;
-      if (w && w.createdAt) walletCreationDate = new Date(w.createdAt);
     } else {
       initialBal = (state.wallets || []).reduce((acc, w) => acc + (parseFloat(w.initialBalance) || 0), 0);
-      const earliestCreated = (state.wallets || []).reduce((min, w) => {
-        if (!w.createdAt) return min;
-        return (!min || w.createdAt < min) ? w.createdAt : min;
-      }, null);
-      if (earliestCreated) walletCreationDate = new Date(earliestCreated);
     }
 
     const totalCredits = txList.reduce((acc, t) => acc + (parseFloat(t.credit) || 0), 0);
@@ -576,9 +569,13 @@
     });
 
     const now = new Date();
-    const defaultInitDate = walletCreationDate && !isNaN(walletCreationDate.getTime())
-      ? walletCreationDate
-      : (sorted.length > 0 ? new Date(sorted[0].date + 'T00:00:00') : now);
+    let defaultInitDate;
+    if (sorted.length > 0 && sorted[0].date) {
+      const firstTxDate = new Date(sorted[0].date + 'T00:00:00');
+      defaultInitDate = new Date(firstTxDate.getTime() - 30 * 24 * 60 * 60 * 1000);
+    } else {
+      defaultInitDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    }
 
     const inflowQueue = [];
 
@@ -618,12 +615,7 @@
     });
 
     if (!lastDebitDate) {
-      if (inflowQueue.length === 0 || currentNetBalance <= 0) {
-        return { days: 0, hasSpends: false, hasFunds: false };
-      }
-      const refDate = inflowQueue[0].date;
-      const diffDays = Math.max(0, Math.floor((now - refDate) / (1000 * 60 * 60 * 24)));
-      return { days: diffDays, hasSpends: false, hasFunds: true };
+      return { days: 0, hasSpends: false, hasFunds: currentNetBalance > 0 };
     }
 
     if (!lastInflowBatchDate) {

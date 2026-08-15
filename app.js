@@ -866,19 +866,24 @@
     });
   }
 
+  function openSettingsModal() {
+    const modal = document.getElementById('initialBalanceModal');
+    const nameInput = document.getElementById('settingsUserNameInput');
+    const themeSelect = document.getElementById('settingsThemeSelect');
+    const baseSelect = document.getElementById('baseCurrencySelect');
+
+    if (nameInput) nameInput.value = state.settings.userName || '';
+    if (themeSelect) themeSelect.value = state.theme || 'auto_date';
+    if (baseSelect) baseSelect.value = state.settings.baseCurrency || 'PHP';
+    if (window.BB_THEME?.updatePinSettingsUI) window.BB_THEME.updatePinSettingsUI();
+    if (window.BB_WALLETS?.updateActiveSlotBadge) window.BB_WALLETS.updateActiveSlotBadge();
+    updateLastSavedDisplay();
+    modal?.classList.add('active');
+  }
+
   function setupInitialBalanceListeners() {
     const modal = document.getElementById('initialBalanceModal');
-    document.getElementById('openInitialBalanceBtn')?.addEventListener('click', () => {
-      const nameInput = document.getElementById('settingsUserNameInput');
-      const themeSelect = document.getElementById('settingsThemeSelect');
-      const baseSelect = document.getElementById('baseCurrencySelect');
-
-      if (nameInput) nameInput.value = state.settings.userName || '';
-      if (themeSelect) themeSelect.value = state.theme || 'auto_date';
-      if (baseSelect) baseSelect.value = state.settings.baseCurrency || 'PHP';
-      if (window.BB_THEME) window.BB_THEME.updatePinSettingsUI();
-      modal?.classList.add('active');
-    });
+    document.getElementById('openInitialBalanceBtn')?.addEventListener('click', openSettingsModal);
 
     const closeModal = () => modal?.classList.remove('active');
     document.getElementById('closeInitialBalanceModalBtn')?.addEventListener('click', closeModal);
@@ -1478,11 +1483,7 @@
       if (window.BB_REPORTS) window.BB_REPORTS.renderExpenseReport();
     });
 
-    document.getElementById('mobileNavSettingsBtn')?.addEventListener('click', () => {
-      if (window.BB_WALLETS) window.BB_WALLETS.updateActiveSlotBadge();
-      updateLastSavedDisplay();
-      document.getElementById('initialBalanceModal')?.classList.add('active');
-    });
+    document.getElementById('mobileNavSettingsBtn')?.addEventListener('click', openSettingsModal);
 
     window.addEventListener('resize', () => window.BB_THEME?.detectDeviceType());
     window.addEventListener('orientationchange', () => {
@@ -1555,6 +1556,7 @@
     deleteTransaction,
     deleteCategory,
     promptRenameCategory,
+    openSettingsModal,
     openEditWalletModal: (id) => window.BB_WALLETS?.openEditWalletModal(id),
     promptDeleteWallet: (id) => window.BB_WALLETS?.promptDeleteWallet(id),
     openEditDebtModal: (id) => window.BB_DEBTS?.openEditDebtModal(id),

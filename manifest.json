@@ -1,0 +1,19 @@
+{
+  "name": "Bantay Barya",
+  "short_name": "Bantay Barya",
+  "description": "Bantay Barya - Continuous income and expense tracker with live multi-currency exchange rates and visual reports.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#090d16",
+  "theme_color": "#2563eb",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "./icons/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["finance", "productivity", "utilities"]
+}

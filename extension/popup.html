@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bantay Barya - Quick Expense Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <header class="popup-header">
+      <div class="brand-group">
+        <div class="brand-icon">
+          <svg width="22" height="22" viewBox="0 0 48 48" fill="none">
+            <rect width="48" height="48" rx="12" fill="#2563eb"/>
+            <circle cx="24" cy="24" r="14" fill="#ffffff" fill-opacity="0.2"/>
+            <path d="M24 14V34M19 18H27C28.6569 18 30 19.3431 30 21C30 22.6569 28.6569 24 27 24H21C19.3431 24 18 25.3431 18 27C18 28.6569 19.3431 30 21 30H29" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1 class="brand-title">Bantay Barya</h1>
+          <span id="activeSlotPill" class="slot-pill" title="Currently Active Save Slot">🌟 Primary</span>
+        </div>
+      </div>
+      <button id="openAppBtn" class="btn-icon-link" title="Open Full Bantay Barya Dashboard in Tab">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+          <polyline points="15 3 21 3 21 9"></polyline>
+          <line x1="10" y1="14" x2="21" y2="3"></line>
+        </svg>
+      </button>
+    </header>
+
+    <!-- Quick Net Balance & Spending Buffer Ribbon -->
+    <section class="quick-kpi-banner">
+      <div class="kpi-col">
+        <span class="kpi-label">Net Balance</span>
+        <span id="popupTotalBalance" class="kpi-val font-mono">₱0.00</span>
+      </div>
+      <div class="kpi-col text-right">
+        <span class="kpi-label">Spending Buffer</span>
+        <span id="popupSpendingBuffer" class="kpi-buffer-badge">30+ Days Healthy</span>
+      </div>
+    </section>
+
+    <!-- Wallets Quick View Chips -->
+    <div id="popupWalletsContainer" class="popup-wallets-scroll">
+      <!-- Populated dynamically -->
+    </div>
+
+    <!-- Quick Add Transaction Form -->
+    <form id="quickTxForm" class="quick-form">
+      <div class="type-pill-selector">
+        <label class="pill-label">
+          <input type="radio" name="entryType" value="debit" id="typeDebit" checked>
+          <span class="pill-btn pill-debit">Debit (Expense)</span>
+        </label>
+        <label class="pill-label">
+          <input type="radio" name="entryType" value="credit" id="typeCredit">
+          <span class="pill-btn pill-credit">Credit (Income)</span>
+        </label>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group flex-1">
+          <label for="txWalletSelect" class="form-label">Wallet</label>
+          <select id="txWalletSelect" class="form-input" required>
+            <!-- Populated dynamically -->
+          </select>
+        </div>
+        <div class="form-group flex-1">
+          <label for="txDate" class="form-label">Date</label>
+          <input type="date" id="txDate" class="form-input font-mono" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="txItem" class="form-label">Classification / Item *</label>
+        <input type="text" id="txItem" class="form-input" placeholder="e.g. Groceries, Coffee, Utilities" list="catList" required>
+        <datalist id="catList"></datalist>
+      </div>
+
+      <div class="form-group">
+        <label for="txAmount" class="form-label">Amount (<span id="currencySymbol">₱</span>) *</label>
+        <div class="input-prefix-wrapper">
+          <span class="input-prefix" id="amountPrefix">₱</span>
+          <input type="number" id="txAmount" class="form-input font-mono" step="any" min="0.01" placeholder="0.00" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="txNotes" class="form-label">Notes (Optional)</label>
+        <input type="text" id="txNotes" class="form-input" placeholder="Optional details...">
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block" id="submitTxBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+        <span>Record Transaction</span>
+      </button>
+    </form>
+
+    <!-- Footer Actions -->
+    <footer class="popup-footer">
+      <button id="quickSnapshotBtn" class="btn btn-ghost btn-sm" title="Save instant timestamped snapshot of current ledger">
+        <span>📸 Quick Snapshot</span>
+      </button>
+      <span class="version-tag">v7.0 • <a href="https://antigravity.google/" target="_blank" class="link-antigravity">Antigravity</a></span>
+    </footer>
+
+    <!-- Toast -->
+    <div id="popupToast" class="popup-toast"></div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

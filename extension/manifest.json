@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "Bantay Barya - Multi-Wallet Expense Tracker",
+  "version": "1.0.0",
+  "description": "Quick expense logging, multiple saves & wallet balance viewer for Bantay Barya.",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Bantay Barya Quick Tracker",
+    "default_icon": "icon.svg"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": [
+    "storage",
+    "activeTab",
+    "contextMenus"
+  ],
+  "icons": {
+    "16": "icon.svg",
+    "48": "icon.svg",
+    "128": "icon.svg"
+  },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Alt+Shift+B",
+        "mac": "Alt+Shift+B"
+      },
+      "description": "Open Bantay Barya Quick Logger"
+    }
+  }
+}

@@ -287,6 +287,7 @@
   const STORAGE_KEY_FX_CACHE = 'bantay_barya_fx_cache_v7';
   const STORAGE_KEY_DONT_SHOW_WELCOME = 'bantay_barya_dont_show_welcome_v7';
   const STORAGE_KEY_PIN = 'bantay_barya_pin_v7';
+  const STORAGE_KEY_LAST_SAVED = 'bantay_barya_last_saved_v7';
 
   const LEGACY_KEY_TRANSACTIONS_V6 = 'bantay_barya_transactions_v6';
   const LEGACY_KEY_SETTINGS_V6 = 'bantay_barya_settings_v6';
@@ -392,6 +393,7 @@
     STORAGE_KEY_FX_CACHE,
     STORAGE_KEY_DONT_SHOW_WELCOME,
     STORAGE_KEY_PIN,
+    STORAGE_KEY_LAST_SAVED,
     LEGACY_KEY_TRANSACTIONS_V6,
     LEGACY_KEY_SETTINGS_V6,
     LEGACY_KEY_CATEGORIES_V6,

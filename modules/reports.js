@@ -20,10 +20,10 @@
   let chartInstance = null;
 
   const REPORT_MULTI_COLORS = [
-    '#2563eb', '#e11d48', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899',
-    '#06b6d4', '#ea580c', '#14b8a6', '#6366f1', '#84cc16', '#a855f7',
-    '#0284c7', '#d97706', '#059669', '#dc2626', '#4f46e5', '#7c3aed',
-    '#0891b2', '#ca8a04', '#db2777', '#16a34a', '#f97316', '#9333ea'
+    '#7be3a8', '#1a7a8e', '#38bdf8', '#ff7b92', '#f59e0b', '#a78bfa',
+    '#0d5e6e', '#34d399', '#f43f5e', '#60a5fa', '#ca8a04', '#2dd4bf',
+    '#fb923c', '#c084fc', '#4ade80', '#0284c7', '#d97706', '#ec4899',
+    '#059669', '#dc2626', '#4f46e5', '#7c3aed', '#0891b2', '#9333ea'
   ];
 
   function setupReportListeners() {
@@ -538,323 +538,325 @@
       document.getElementById('aboutModal')?.classList.remove('active');
       openGuideModal('ph_context');
     });
-
-    const closeGuide = () => document.getElementById('guideModal')?.classList.remove('active');
-    document.getElementById('closeGuideModalBtn')?.addEventListener('click', closeGuide);
-    document.getElementById('closeGuideModalFooterBtn')?.addEventListener('click', closeGuide);
-    document.getElementById('guideModal')?.addEventListener('click', (e) => {
-      if (e.target === document.getElementById('guideModal')) closeGuide();
+    document.getElementById('closeGuideModalBtn')?.addEventListener('click', () => {
+      document.getElementById('guideModal')?.classList.remove('active');
+    });
+    document.getElementById('closeGuideModalFooterBtn')?.addEventListener('click', () => {
+      document.getElementById('guideModal')?.classList.remove('active');
     });
 
     document.getElementById('guideTabBtnPhContext')?.addEventListener('click', () => switchGuideTab('ph_context'));
     document.getElementById('guideTabBtnTutorial')?.addEventListener('click', () => switchGuideTab('tutorial'));
     document.getElementById('guideTabBtnPractices')?.addEventListener('click', () => switchGuideTab('practices'));
+
+    const guideModal = document.getElementById('guideModal');
+    guideModal?.addEventListener('click', (e) => {
+      if (e.target === guideModal) guideModal.classList.remove('active');
+    });
   }
 
   function setupExportImportListeners() {
-    const exportDropdown = document.getElementById('exportDropdown');
-    document.getElementById('exportMenuBtn')?.addEventListener('click', (e) => {
-      e.stopPropagation();
-      exportDropdown?.classList.toggle('show');
-    });
+    document.getElementById('exportJsonBtn')?.addEventListener('click', exportDataAsJson);
+    document.getElementById('exportCsvBtn')?.addEventListener('click', exportDataAsCsv);
+    document.getElementById('exportSaveVaultBtn')?.addEventListener('click', exportSaveVaultArchive);
 
-    document.addEventListener('click', () => {
-      exportDropdown?.classList.remove('show');
-    });
+    const importInput = document.getElementById('importFileInput');
+    const importVaultInput = document.getElementById('importVaultFileInput');
 
-    document.getElementById('exportCsvBtn')?.addEventListener('click', () => exportLedgerCsv());
-    document.getElementById('exportSheetsBtn')?.addEventListener('click', () => copyForGoogleSheets());
-    document.getElementById('exportJsonBtn')?.addEventListener('click', () => exportLedgerJson());
-    document.getElementById('importJsonInput')?.addEventListener('change', handleFileImport);
-    document.getElementById('loadSampleDataBtn')?.addEventListener('click', () => {
-      if (window.BB_CORE?.hasActiveSavedLedger?.()) {
-        window.BB_CORE.openOverwriteWarningModal('load_sample', () => loadSampleData());
-      } else {
-        loadSampleData();
+    document.getElementById('importJsonBtn')?.addEventListener('click', () => importInput?.click());
+    document.getElementById('importSaveVaultBtn')?.addEventListener('click', () => importVaultInput?.click());
+
+    importInput?.addEventListener('change', handleFileImport);
+    importVaultInput?.addEventListener('change', handleVaultImport);
+
+    document.getElementById('demoDataBtn')?.addEventListener('click', () => {
+      if (window.BB_CORE && window.BB_CORE.hasActiveSavedLedger()) {
+        window.BB_CORE.showOverwriteWarningModal('sample');
+        return;
+      }
+      if (confirm('Load demo transactions and wallets? Existing active data will be replaced.')) {
+        loadDemoData();
       }
     });
 
-    document.getElementById('clearAllDataBtn')?.addEventListener('click', () => {
-      if (confirm('Are you sure you want to reset all Bantay Barya records to 0 balance? This cannot be undone.')) {
-        state.transactions = [];
-        state.wallets = [...DEFAULT_WALLETS];
-        state.wallets[0].initialBalance = 0;
-        if (window.BB_WALLETS) {
-          window.BB_WALLETS.recalculateLedgerBalances();
-          window.BB_WALLETS.populateWalletDropdowns();
-        }
-        if (window.BB_CORE?.showToast) window.BB_CORE.showToast('All transactions cleared. Balance reset to ₱0.00.', 'info');
+    document.getElementById('welcomeLoadSampleBtn')?.addEventListener('click', () => {
+      if (window.BB_CORE && window.BB_CORE.hasActiveSavedLedger()) {
+        window.BB_CORE.showOverwriteWarningModal('sample');
+        return;
       }
+      loadDemoData();
+      document.getElementById('welcomeModal')?.classList.remove('active');
     });
   }
 
-  function exportLedgerCsv() {
-    const sorted = [...state.transactions].sort((a, b) => {
-      if (a.date === b.date) return (a.createdAt || 0) - (b.createdAt || 0);
-      return a.date.localeCompare(b.date);
-    });
-
-    const baseCurr = state.settings.baseCurrency || 'PHP';
-    const headers = [
-      'Date', 'Wallet', 'Expense Item / Classification',
-      `Credit (${baseCurr})`, `Debit (${baseCurr})`,
-      `Wallet Balance (${baseCurr})`, `Total Net Balance (${baseCurr})`,
-      'Input Currency', 'Input Amount', 'Exchange Rate', 'Notes'
-    ];
-
-    const rows = sorted.map(tx => {
-      const w = window.BB_WALLETS ? window.BB_WALLETS.getWallet(tx.walletId) : null;
-      return [
-        `"${tx.date}"`,
-        `"${(w ? w.name : 'Main Wallet').replace(/"/g, '""')}"`,
-        `"${(tx.item || '').replace(/"/g, '""')}"`,
-        parseFloat(tx.credit || 0).toFixed(2),
-        parseFloat(tx.debit || 0).toFixed(2),
-        parseFloat(tx.walletRunningBalance || 0).toFixed(2),
-        parseFloat(tx.runningBalance || 0).toFixed(2),
-        `"${tx.inputCurrency || baseCurr}"`,
-        parseFloat(tx.inputAmount || (tx.credit > 0 ? tx.credit : tx.debit) || 0).toFixed(2),
-        parseFloat(tx.exchangeRate || 1.0).toFixed(4),
-        `"${(tx.notes || '').replace(/"/g, '""')}"`
-      ];
-    });
-
-    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Bantay_Barya_MultiWallet_Ledger_${baseCurr}_${getRelativeDateString(0)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Multi-Wallet CSV exported successfully!', 'success');
-  }
-
-  function copyForGoogleSheets() {
-    const sorted = [...state.transactions].sort((a, b) => {
-      if (a.date === b.date) return (a.createdAt || 0) - (b.createdAt || 0);
-      return a.date.localeCompare(b.date);
-    });
-
-    const baseCurr = state.settings.baseCurrency || 'PHP';
-    const headers = [
-      'Date', 'Wallet', 'Classification',
-      `Credit (${baseCurr})`, `Debit (${baseCurr})`,
-      `Wallet Balance (${baseCurr})`, `Net Balance (${baseCurr})`,
-      'Currency', 'Amount', 'FX Rate', 'Notes'
-    ];
-
-    const tsvRows = sorted.map(tx => {
-      const w = window.BB_WALLETS ? window.BB_WALLETS.getWallet(tx.walletId) : null;
-      return [
-        tx.date || '',
-        w ? w.name : 'Main Wallet',
-        tx.item || '',
-        parseFloat(tx.credit || 0).toFixed(2),
-        parseFloat(tx.debit || 0).toFixed(2),
-        parseFloat(tx.walletRunningBalance || 0).toFixed(2),
-        parseFloat(tx.runningBalance || 0).toFixed(2),
-        tx.inputCurrency || baseCurr,
-        parseFloat(tx.inputAmount || (tx.credit > 0 ? tx.credit : tx.debit) || 0).toFixed(2),
-        parseFloat(tx.exchangeRate || 1.0).toFixed(4),
-        tx.notes || ''
-      ].join('\t');
-    });
-
-    const fullTsv = [headers.join('\t'), ...tsvRows].join('\n');
-
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(fullTsv)
-        .then(() => {
-          if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Copied to clipboard! Open Google Sheets and press Ctrl+V to paste.', 'success');
-        })
-        .catch(() => fallbackCopyText(fullTsv));
-    } else {
-      fallbackCopyText(fullTsv);
-    }
-  }
-
-  function fallbackCopyText(text) {
-    const textarea = document.createElement('textarea');
-    textarea.value = text;
-    textarea.style.position = 'fixed';
-    textarea.style.opacity = '0';
-    document.body.appendChild(textarea);
-    textarea.select();
-    try {
-      document.execCommand('copy');
-      if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Copied for Google Sheets! Paste with Ctrl+V.', 'success');
-    } catch (e) {
-      if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Please copy from the CSV export file.', 'info');
-    }
-    document.body.removeChild(textarea);
-  }
-
-  function exportLedgerJson(filenamePrefix = 'Bantay_Barya_Backup') {
-    const backupData = {
-      appName: 'Bantay Barya',
-      author: 'Jerome Gotangco (jeromesg@google.com)',
-      disclaimer: 'Personal work of the author, not affiliated with or endorsed by Google or any other party.',
-      website: 'https://antigravity.google/',
+  function exportDataAsJson() {
+    const payload = {
+      app: 'Bantay Barya',
       version: '7.0',
       exportedAt: new Date().toISOString(),
-      baseCurrency: state.settings.baseCurrency,
-      saveSlots: state.saveSlots,
-      activeSlotId: state.activeSlotId,
+      settings: state.settings,
       wallets: state.wallets,
       debts: state.debts,
       bills: state.bills,
       categories: state.categories,
-      settings: state.settings,
       transactions: state.transactions
     };
 
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(backupData, null, 2));
-    const link = document.createElement('a');
-    link.setAttribute('href', dataStr);
-    link.setAttribute('download', `${filenamePrefix}_${getRelativeDateString(0)}.json`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Bantay Barya Multi-Wallet JSON backup exported!', 'success');
+    const str = JSON.stringify(payload, null, 2);
+    downloadFile(str, `bantay_barya_ledger_${new Date().toISOString().slice(0, 10)}.json`, 'application/json');
+    if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Ledger data exported successfully as JSON.', 'success');
   }
 
-  function handleFileImport(e, bypassConfirm = false) {
-    const file = e.target?.files?.[0] || e;
-    if (!file) return;
+  function exportDataAsCsv() {
+    const headers = ['ID', 'Date', 'Wallet', 'Item / Description', 'Debit (Expense)', 'Credit (Income)', 'Running Balance', 'Currency', 'Exchange Rate', 'Notes'];
+    const rows = state.transactions.map(t => {
+      const w = state.wallets.find(x => x.id === t.walletId);
+      const wName = w ? w.name : 'Unknown';
+      return [
+        `"${t.id || ''}"`,
+        `"${t.date || ''}"`,
+        `"${wName.replace(/"/g, '""')}"`,
+        `"${(t.item || '').replace(/"/g, '""')}"`,
+        (parseFloat(t.debit) || 0).toFixed(2),
+        (parseFloat(t.credit) || 0).toFixed(2),
+        (parseFloat(t.runningBalance) || 0).toFixed(2),
+        `"${t.originalCurrency || state.settings.baseCurrency || 'PHP'}"`,
+        (parseFloat(t.exchangeRate) || 1.0).toFixed(4),
+        `"${(t.notes || '').replace(/"/g, '""')}"`
+      ].join(',');
+    });
 
-    const executeImport = () => {
-      if (file.name.endsWith('.barya')) {
-        if (window.BB_WALLETS) window.BB_WALLETS.importBaryaFile(file);
-        return;
-      }
+    const csvContent = [headers.join(','), ...rows].join('\r\n');
+    downloadFile(csvContent, `bantay_barya_transactions_${new Date().toISOString().slice(0, 10)}.csv`, 'text/csv');
+    if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Transactions exported as CSV.', 'success');
+  }
 
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        try {
-          const text = event.target.result;
-          if (file.name.endsWith('.json')) {
-            const parsed = JSON.parse(text);
-            if (parsed.transactions && Array.isArray(parsed.transactions)) {
-              state.transactions = parsed.transactions;
-              if (parsed.wallets && Array.isArray(parsed.wallets)) {
-                state.wallets = parsed.wallets;
-              } else if (!state.wallets || state.wallets.length === 0) {
-                state.wallets = [...DEFAULT_WALLETS];
-              }
-              if (parsed.debts && Array.isArray(parsed.debts)) state.debts = parsed.debts;
-              if (parsed.bills && Array.isArray(parsed.bills)) state.bills = parsed.bills;
-              if (parsed.settings) state.settings = parsed.settings;
-              if (parsed.categories && Array.isArray(parsed.categories)) state.categories = parsed.categories;
-              if (parsed.saveSlots && Array.isArray(parsed.saveSlots)) state.saveSlots = parsed.saveSlots;
-              if (parsed.activeSlotId) state.activeSlotId = parsed.activeSlotId;
-
-              state.transactions.forEach(t => {
-                if (!t.walletId) t.walletId = state.wallets[0]?.id || 'wallet_default';
-              });
-
-              if (window.BB_CORE) {
-                window.BB_CORE.updateCategoryDatalists();
-                window.BB_CORE.updateFxRateAndConversion();
-                window.BB_CORE.saveData();
-              }
-              if (window.BB_WALLETS) {
-                window.BB_WALLETS.populateWalletDropdowns();
-                window.BB_WALLETS.recalculateLedgerBalances();
-              }
-              if (window.BB_BILLS) {
-                window.BB_BILLS.checkBillDueNotifications();
-                window.BB_BILLS.renderBillsTable();
-              }
-              const baseSelect = document.getElementById('baseCurrencySelect');
-              const txSelect = document.getElementById('txCurrencySelect');
-              const nameInput = document.getElementById('settingsUserNameInput');
-
-              if (baseSelect) baseSelect.value = state.settings.baseCurrency || 'PHP';
-              if (txSelect) txSelect.value = state.settings.baseCurrency || 'PHP';
-              if (nameInput) nameInput.value = state.settings.userName || '';
-              if (window.BB_THEME) window.BB_THEME.updateTimeGreeting();
-
-              if (window.BB_CORE?.showToast) window.BB_CORE.showToast(`Restored ${parsed.transactions.length} transactions across ${state.wallets.length} wallets!`, 'success');
-            } else {
-              if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Invalid JSON ledger backup format.', 'error');
-            }
-          }
-        } catch (err) {
-          if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Error importing backup file: ' + err.message, 'error');
-        }
-
-        const input = document.getElementById('importJsonInput');
-        if (input) input.value = '';
-        const driveInput = document.getElementById('loadFromDriveInput');
-        if (driveInput) driveInput.value = '';
-        const welcomeInput = document.getElementById('welcomeImportInput');
-        if (welcomeInput) welcomeInput.value = '';
-      };
-      reader.readAsText(file);
+  function exportSaveVaultArchive() {
+    if (window.BB_WALLETS?.syncActiveSlotPayload) window.BB_WALLETS.syncActiveSlotPayload();
+    const vaultPayload = {
+      app: 'Bantay Barya Save Vault',
+      version: '7.0',
+      vaultExportedAt: new Date().toISOString(),
+      activeSlotId: state.activeSlotId,
+      saveSlots: state.saveSlots
     };
 
-    if (!bypassConfirm && window.BB_CORE?.hasActiveSavedLedger?.()) {
-      window.BB_CORE.openOverwriteWarningModal('restore_backup', executeImport);
-    } else {
-      executeImport();
-    }
+    const str = JSON.stringify(vaultPayload, null, 2);
+    downloadFile(str, `bantay_barya_vault_all_slots_${new Date().toISOString().slice(0, 10)}.barya`, 'application/json');
+    if (window.BB_CORE?.showToast) window.BB_CORE.showToast('All save vault profiles exported as .barya archive!', 'success');
   }
 
-  function loadSampleData() {
-    const baseTimestamp = Date.now();
+  function downloadFile(content, fileName, contentType) {
+    const a = document.createElement('a');
+    const file = new Blob([content], { type: contentType });
+    a.href = URL.createObjectURL(file);
+    a.download = fileName;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function handleFileImport(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (window.BB_CORE && window.BB_CORE.hasActiveSavedLedger()) {
+      window.BB_CORE.showOverwriteWarningModal('backup', file);
+      e.target.value = '';
+      return;
+    }
+
+    executeFileImport(file);
+    e.target.value = '';
+  }
+
+  function executeFileImport(file) {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target.result);
+        if (!data.wallets && !data.transactions) {
+          throw new Error('Invalid file format: missing wallets or transactions.');
+        }
+
+        state.wallets = Array.isArray(data.wallets) && data.wallets.length > 0 ? data.wallets : [...DEFAULT_WALLETS];
+        state.transactions = Array.isArray(data.transactions) ? data.transactions : [];
+        state.debts = Array.isArray(data.debts) ? data.debts : [];
+        state.bills = Array.isArray(data.bills) ? data.bills : [];
+        state.categories = Array.isArray(data.categories) && data.categories.length > 0 ? data.categories : [...DEFAULT_CATEGORIES];
+        if (data.settings) state.settings = { ...state.settings, ...data.settings };
+
+        if (window.BB_WALLETS?.recalculateBalances) window.BB_WALLETS.recalculateBalances();
+        if (window.BB_CORE?.saveData) window.BB_CORE.saveData();
+        if (window.BB_WALLETS?.renderWalletBar) window.BB_WALLETS.renderWalletBar();
+        if (window.BB_CORE?.renderTable) window.BB_CORE.renderTable();
+        if (window.BB_THEME?.renderAllHeroCharts) window.BB_THEME.renderAllHeroCharts();
+
+        const welcomeModal = document.getElementById('welcomeModal');
+        if (welcomeModal) welcomeModal.classList.remove('active');
+
+        if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Ledger successfully imported and restored!', 'success');
+      } catch (err) {
+        if (window.BB_CORE?.showToast) window.BB_CORE.showToast(`Import failed: ${err.message}`, 'error');
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function handleVaultImport(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target.result);
+        if (!data.saveSlots || !Array.isArray(data.saveSlots)) {
+          throw new Error('Invalid .barya save vault file format.');
+        }
+
+        if (confirm(`Import ${data.saveSlots.length} save vault slots from archive? Existing slots will be merged/updated.`)) {
+          data.saveSlots.forEach(newSlot => {
+            const idx = state.saveSlots.findIndex(s => s.id === newSlot.id);
+            if (idx >= 0) state.saveSlots[idx] = newSlot;
+            else state.saveSlots.push(newSlot);
+          });
+
+          if (window.BB_WALLETS?.persistSaveSlots) window.BB_WALLETS.persistSaveSlots();
+          if (window.BB_WALLETS?.renderSaveSlotsUI) window.BB_WALLETS.renderSaveSlotsUI();
+          if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Save vault slots imported successfully!', 'success');
+        }
+      } catch (err) {
+        if (window.BB_CORE?.showToast) window.BB_CORE.showToast(`Vault import failed: ${err.message}`, 'error');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  }
+
+  function loadDemoData() {
+    state.settings.userName = 'Jerome G.';
+    state.settings.baseCurrency = 'PHP';
+
     state.wallets = [
-      { id: 'wallet_spending', name: 'Personal Spending', type: 'spending', currency: 'PHP', icon: '👛', initialBalance: 15000.00, createdAt: baseTimestamp - 70 * 86400000 },
-      { id: 'wallet_ewallet', name: 'GCash / Maya Super App', type: 'ewallet', currency: 'PHP', icon: '📱', initialBalance: 8500.00, createdAt: baseTimestamp - 70 * 86400000 },
-      { id: 'wallet_savings', name: 'High-Yield Savings (SeaBank / Maya)', type: 'savings', currency: 'PHP', icon: '🏦', initialBalance: 50000.00, createdAt: baseTimestamp - 70 * 86400000 },
-      { id: 'wallet_crypto', name: 'Crypto Portfolio (BTC / ETH / SOL)', type: 'crypto', currency: 'USD', icon: '🪙', initialBalance: 3500.00, createdAt: baseTimestamp - 70 * 86400000 },
-      { id: 'wallet_stocks', name: 'US Equities & ETFs (GoTrade / PSEi)', type: 'investment', currency: 'USD', icon: '📈', initialBalance: 5000.00, createdAt: baseTimestamp - 70 * 86400000 },
-      { id: 'wallet_td', name: 'Maya 6.0% p.a. Time Deposit', type: 'time_deposit', currency: 'PHP', icon: '⏳', initialBalance: 100000.00, createdAt: baseTimestamp - 70 * 86400000 },
-      { id: 'wallet_cash', name: 'Physical Cash on Hand', type: 'cash', currency: 'PHP', icon: '💵', initialBalance: 5000.00, createdAt: baseTimestamp - 70 * 86400000 }
+      {
+        id: 'wallet_bpi',
+        name: 'BPI Preferred Checking',
+        type: 'current',
+        currency: 'PHP',
+        icon: '🏦',
+        initialBalance: 85000.00,
+        createdAt: Date.now() - 60 * 24 * 60 * 60 * 1000
+      },
+      {
+        id: 'wallet_maya',
+        name: 'Maya High-Yield Savings (6.0%)',
+        type: 'savings',
+        currency: 'PHP',
+        icon: '📱',
+        initialBalance: 150000.00,
+        createdAt: Date.now() - 60 * 24 * 60 * 60 * 1000
+      },
+      {
+        id: 'wallet_gcash',
+        name: 'GCash Everyday Spending',
+        type: 'ewallet',
+        currency: 'PHP',
+        icon: '💳',
+        initialBalance: 12500.00,
+        createdAt: Date.now() - 45 * 24 * 60 * 60 * 1000
+      },
+      {
+        id: 'wallet_wise_usd',
+        name: 'Wise USD Multi-Currency',
+        type: 'current',
+        currency: 'USD',
+        icon: '🌐',
+        initialBalance: 2400.00,
+        createdAt: Date.now() - 30 * 24 * 60 * 60 * 1000
+      },
+      {
+        id: 'wallet_bdo_rtb',
+        name: 'RTB-30 Treasury Bonds (5.75%)',
+        type: 'bond',
+        currency: 'PHP',
+        icon: '📜',
+        initialBalance: 100000.00,
+        createdAt: Date.now() - 30 * 24 * 60 * 60 * 1000
+      }
     ];
+
+    state.debts = [
+      {
+        id: 'debt_mortgage_sample',
+        name: 'Avida Condo Mortgage (BPI)',
+        type: 'mortgage',
+        icon: '🏠',
+        balance: 1850000.00,
+        monthlyRate: 0.5625,
+        apr: 6.75,
+        minPayment: 16500.00,
+        dueDate: 'Every 15th',
+        notes: '20-year fixed home loan (6.75% EIR p.a.)',
+        createdAt: Date.now() - 30 * 24 * 60 * 60 * 1000
+      },
+      {
+        id: 'debt_auto_sample',
+        name: 'Toyota Raize Auto Loan (TFS)',
+        type: 'auto',
+        icon: '🚗',
+        balance: 380000.00,
+        monthlyRate: 0.7083,
+        apr: 8.50,
+        minPayment: 9800.00,
+        dueDate: 'Every 5th',
+        notes: '5-year auto amortization (8.50% EIR p.a.)',
+        createdAt: Date.now() - 60 * 24 * 60 * 60 * 1000
+      },
+      {
+        id: 'debt_cc_sample',
+        name: 'BPI Visa Signature',
+        type: 'credit_card',
+        icon: '💳',
+        balance: 45000.00,
+        monthlyRate: 3.00,
+        apr: 36.00,
+        minPayment: 3500.00,
+        dueDate: 'Every 22nd',
+        notes: 'BSP standard credit card rate (3.0% / mo | 36.0% EIR)',
+        createdAt: Date.now() - 10 * 24 * 60 * 60 * 1000
+      }
+    ];
+
+    state.bills = SAMPLE_BILLS.map(b => ({ ...b }));
 
     state.transactions = [
-      { id: 'tx_demo_1', walletId: 'wallet_spending', date: getRelativeDateString(-65), item: 'Balance Brought Forward', type: 'credit', inputCurrency: 'PHP', inputAmount: 15000.00, exchangeRate: 1.0, credit: 15000.00, debit: 0, notes: 'Initial personal spending balance', createdAt: baseTimestamp - 65 * 86400000 },
-      { id: 'tx_demo_2', walletId: 'wallet_savings', date: getRelativeDateString(-55), item: 'Salary & Wages', type: 'credit', inputCurrency: 'PHP', inputAmount: 48000.00, exchangeRate: 1.0, credit: 48000.00, debit: 0, notes: 'Monthly earnings (Two months ago into savings)', createdAt: baseTimestamp - 55 * 86400000 },
-      { id: 'tx_demo_3', walletId: 'wallet_spending', date: getRelativeDateString(-45), item: 'Rent & Housing', type: 'debit', inputCurrency: 'PHP', inputAmount: 15000.00, exchangeRate: 1.0, credit: 0, debit: 15000.00, notes: 'Apartment rent from spending wallet', createdAt: baseTimestamp - 45 * 86400000 },
-      { id: 'tx_demo_4', walletId: 'wallet_savings', date: getRelativeDateString(-25), item: 'Salary & Wages', type: 'credit', inputCurrency: 'PHP', inputAmount: 48000.00, exchangeRate: 1.0, credit: 48000.00, debit: 0, notes: 'Monthly earnings (Last month into savings)', createdAt: baseTimestamp - 25 * 86400000 },
-      { id: 'tx_demo_5', walletId: 'wallet_cash', date: getRelativeDateString(-18), item: 'Groceries', type: 'debit', inputCurrency: 'PHP', inputAmount: 2500.00, exchangeRate: 1.0, credit: 0, debit: 2500.00, notes: 'Farmers market groceries with cash', createdAt: baseTimestamp - 18 * 86400000 },
-      { id: 'tx_demo_6', walletId: 'wallet_spending', date: getRelativeDateString(-12), item: 'Groceries', type: 'debit', inputCurrency: 'PHP', inputAmount: 4200.00, exchangeRate: 1.0, credit: 0, debit: 4200.00, notes: 'Supermarket supplies on card', createdAt: baseTimestamp - 12 * 86400000 },
-      { id: 'tx_demo_7', walletId: 'wallet_savings', date: getRelativeDateString(-4), item: 'Balance Reconciliation', type: 'credit', inputCurrency: 'PHP', inputAmount: 650.00, exchangeRate: 1.0, credit: 650.00, debit: 0, notes: 'Bank interest credited to savings (+₱650.00)', createdAt: baseTimestamp - 4 * 86400000 },
-      { id: 'tx_demo_8', walletId: 'wallet_cash', date: getRelativeDateString(-1), item: 'Dining & Food', type: 'debit', inputCurrency: 'PHP', inputAmount: 850.00, exchangeRate: 1.0, credit: 0, debit: 850.00, notes: 'Street food and coffee', createdAt: baseTimestamp - 1 * 86400000 },
-      { id: 'tx_demo_9', walletId: 'wallet_spending', date: getRelativeDateString(0), item: 'Software & Subscriptions', type: 'debit', inputCurrency: 'USD', inputAmount: 20.00, exchangeRate: 58.50, credit: 0, debit: 1170.00, notes: 'Online productivity tools ($20 USD @ 58.50)', createdAt: baseTimestamp }
+      { id: 'tx_demo_01', walletId: 'wallet_bpi', date: getRelativeDateString(-25), item: 'Salary & Retainer (Client Tech Global)', type: 'credit', debit: 0, credit: 95000.00, runningBalance: 180000.00, originalCurrency: 'PHP', exchangeRate: 1.0, notes: 'Monthly consulting retainer direct deposit', createdAt: Date.now() - 25 * 86400000 },
+      { id: 'tx_demo_02', walletId: 'wallet_bpi', date: getRelativeDateString(-22), item: 'Rent & Housing', type: 'debit', debit: 28000.00, credit: 0, runningBalance: 152000.00, originalCurrency: 'PHP', exchangeRate: 1.0, notes: 'Bonifacio Global City condo monthly lease', createdAt: Date.now() - 22 * 86400000 },
+      { id: 'tx_demo_03', walletId: 'wallet_gcash', date: getRelativeDateString(-20), item: 'Groceries', type: 'debit', debit: 4850.50, credit: 0, runningBalance: 7649.50, originalCurrency: 'PHP', exchangeRate: 1.0, notes: 'S&R Membership Shopping BGC', createdAt: Date.now() - 20 * 86400000 },
+      { id: 'tx_demo_04', walletId: 'wallet_bpi', date: getRelativeDateString(-18), item: 'Utilities & Bills', type: 'debit', debit: 5420.00, credit: 0, runningBalance: 146580.00, originalCurrency: 'PHP', exchangeRate: 1.0, notes: 'Meralco electricity bill auto-debit', createdAt: Date.now() - 18 * 86400000 },
+      { id: 'tx_demo_05', walletId: 'wallet_gcash', date: getRelativeDateString(-15), item: 'Dining & Food', type: 'debit', debit: 1650.00, credit: 0, runningBalance: 5999.50, originalCurrency: 'PHP', exchangeRate: 1.0, notes: 'Family dinner at Wildflour Cafe', createdAt: Date.now() - 15 * 86400000 },
+      { id: 'tx_demo_06', walletId: 'wallet_wise_usd', date: getRelativeDateString(-12), item: 'Consulting Fee', type: 'credit', debit: 0, credit: 1500.00, runningBalance: 3900.00, originalCurrency: 'USD', exchangeRate: 58.50, notes: 'US Enterprise architectural review retainer', createdAt: Date.now() - 12 * 86400000 },
+      { id: 'tx_demo_07', walletId: 'wallet_wise_usd', date: getRelativeDateString(-10), item: 'Software & Subscriptions', type: 'debit', debit: 200.00, credit: 0, runningBalance: 3700.00, originalCurrency: 'USD', exchangeRate: 58.50, notes: 'GitHub Enterprise + AWS Cloud Services', createdAt: Date.now() - 10 * 86400000 },
+      { id: 'tx_demo_08', walletId: 'wallet_maya', date: getRelativeDateString(-8), item: 'Investment Return', type: 'credit', debit: 0, credit: 750.00, runningBalance: 150750.00, originalCurrency: 'PHP', exchangeRate: 1.0, notes: 'Maya high-yield daily accrued interest payout', createdAt: Date.now() - 8 * 86400000 },
+      { id: 'tx_demo_09', walletId: 'wallet_gcash', date: getRelativeDateString(-5), item: 'Transportation & Fuel', type: 'debit', debit: 2800.00, credit: 0, runningBalance: 3199.50, originalCurrency: 'PHP', exchangeRate: 1.0, notes: 'Caltex full tank gas reload', createdAt: Date.now() - 5 * 86400000 },
+      { id: 'tx_demo_10', walletId: 'wallet_bpi', date: getRelativeDateString(-2), item: 'Healthcare & Wellness', type: 'debit', debit: 3200.00, credit: 0, runningBalance: 143380.00, originalCurrency: 'PHP', exchangeRate: 1.0, notes: 'Annual dental prophylaxis & maintenance', createdAt: Date.now() - 2 * 86400000 }
     ];
 
-    state.debts = JSON.parse(JSON.stringify(SAMPLE_DEBTS));
-    state.selectedSimDebtIds = state.debts.map(d => d.id);
-    state.bills = JSON.parse(JSON.stringify(SAMPLE_BILLS));
-    state.settings.baseCurrency = 'PHP';
-    state.selectedWalletId = 'all';
+    if (window.BB_WALLETS?.recalculateBalances) window.BB_WALLETS.recalculateBalances();
+    if (window.BB_CORE?.saveData) window.BB_CORE.saveData();
+    if (window.BB_WALLETS?.renderWalletBar) window.BB_WALLETS.renderWalletBar();
+    if (window.BB_CORE?.renderTable) window.BB_CORE.renderTable();
+    if (window.BB_THEME?.renderAllHeroCharts) window.BB_THEME.renderAllHeroCharts();
+    if (window.BB_DEBTS?.renderDebtsUI) window.BB_DEBTS.renderDebtsUI();
+    if (window.BB_BILLS?.renderBillsUI) window.BB_BILLS.renderBillsUI();
 
-    const baseSelect = document.getElementById('baseCurrencySelect');
-    const txSelect = document.getElementById('txCurrencySelect');
-    if (baseSelect) baseSelect.value = 'PHP';
-    if (txSelect) txSelect.value = 'PHP';
-
-    if (window.BB_CORE) {
-      window.BB_CORE.updateCategoryDatalists();
-      window.BB_CORE.updateFxRateAndConversion();
-    }
-    if (window.BB_WALLETS) {
-      window.BB_WALLETS.populateWalletDropdowns();
-      window.BB_WALLETS.recalculateLedgerBalances();
-    }
-    if (window.BB_BILLS) {
-      window.BB_BILLS.checkBillDueNotifications();
-      window.BB_BILLS.renderBillsTable();
-    }
-    if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Loaded multi-asset demo data: Crypto, Stocks, Maya TD, Bills & Loans!', 'success');
+    if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Demo financial multi-wallet data loaded!', 'success');
   }
 
   window.BB_REPORTS = {
+    REPORT_MULTI_COLORS,
     setupReportListeners,
     switchReportTab,
-    setChartType,
     renderExpenseReport,
     updateChartThemeColors,
     renderBalanceSheet,
@@ -862,10 +864,10 @@
     switchGuideTab,
     setupGuideModalListeners,
     setupExportImportListeners,
-    exportLedgerCsv,
-    copyForGoogleSheets,
-    exportLedgerJson,
-    handleFileImport,
-    loadSampleData
+    exportDataAsJson,
+    exportDataAsCsv,
+    exportSaveVaultArchive,
+    executeFileImport,
+    loadDemoData
   };
 })(window);

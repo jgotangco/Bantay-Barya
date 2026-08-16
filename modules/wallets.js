@@ -402,57 +402,283 @@
     const sourceWallet = getWallet(walletId);
     if (!sourceWallet) return;
 
-    const txList = state.transactions.filter(t => t.walletId === walletId);
+    const txList = state.transactions.filter(t => t.walletId === walletId && !t.isArchived);
     const balance = getWalletCurrentBalance(walletId);
     const wCurr = sourceWallet.currency || state.settings.baseCurrency || 'PHP';
 
-    document.getElementById('deleteSourceWalletId').value = sourceWallet.id;
-    document.getElementById('deleteSourceWalletName').textContent = `${sourceWallet.icon} ${sourceWallet.name} (${wCurr})`;
-    document.getElementById('deleteSourceTxCount').textContent = txList.length;
-    document.getElementById('deleteSourceBalance').textContent = formatForeignCurrency(balance, wCurr);
+    const sourceIdInput = document.getElementById('deleteSourceWalletId');
+    if (sourceIdInput) sourceIdInput.value = sourceWallet.id;
+    const sourceNameEl = document.getElementById('deleteSourceWalletName');
+    if (sourceNameEl) sourceNameEl.textContent = `${sourceWallet.icon} ${sourceWallet.name} (${wCurr})`;
+    const sourceCountEl = document.getElementById('deleteSourceTxCount');
+    if (sourceCountEl) sourceCountEl.textContent = txList.length;
+    const sourceBalEl = document.getElementById('deleteSourceBalance');
+    if (sourceBalEl) sourceBalEl.textContent = formatForeignCurrency(balance, wCurr);
+
+    const ruleNotice = document.getElementById('deleteWalletBalanceRuleNotice');
+    const targetGroup = document.getElementById('deleteTargetWalletGroup');
+    const submitBtn = document.getElementById('confirmDeleteWalletSubmitBtn');
+
+    if (ruleNotice) {
+      if (Math.abs(balance) > 0.001) {
+        ruleNotice.style.display = 'block';
+        ruleNotice.textContent = `⚠️ This wallet has an active balance of ${formatForeignCurrency(balance, wCurr)}. You cannot delete a wallet with a remaining balance. The balance will be transferred to your selected destination wallet.`;
+        if (targetGroup) targetGroup.style.display = 'block';
+        if (submitBtn) submitBtn.textContent = 'Transfer Balance & Delete Wallet';
+      } else {
+        ruleNotice.style.display = 'none';
+        if (submitBtn) submitBtn.textContent = 'Delete Wallet';
+      }
+    }
 
     const remainingWallets = state.wallets.filter(w => w.id !== walletId);
-    document.getElementById('deleteTargetWalletSelect').innerHTML = remainingWallets.map(w =>
-      `<option value="${w.id}">${w.icon} ${escapeHtml(w.name)} (${formatForeignCurrency(getWalletCurrentBalance(w.id), w.currency || 'PHP')})</option>`
-    ).join('');
+    const targetSel = document.getElementById('deleteTargetWalletSelect');
+    if (targetSel) {
+      targetSel.innerHTML = remainingWallets.map(w =>
+        `<option value="${w.id}">${w.icon} ${escapeHtml(w.name)} (${formatForeignCurrency(getWalletCurrentBalance(w.id), w.currency || 'PHP')})</option>`
+      ).join('');
+    }
 
     document.getElementById('deleteWalletModal')?.classList.add('active');
   }
 
-  function reassignAndDeleteWallet(sourceId, targetId) {
+  async function transferFunds(fromWalletId, toWalletId, amount, currency, date, notes) {
+    if (!fromWalletId || !toWalletId || fromWalletId === toWalletId) {
+      throw new Error('Please select different source and destination wallets.');
+    }
+
+    const fromWallet = getWallet(fromWalletId);
+    const toWallet = getWallet(toWalletId);
+    if (!fromWallet || !toWallet) {
+      throw new Error('Invalid source or destination wallet.');
+    }
+
+    const numAmount = parseFloat(amount);
+    if (isNaN(numAmount) || numAmount <= 0) {
+      throw new Error('Please enter a valid positive transfer amount.');
+    }
+
+    const baseCurrency = state.settings.baseCurrency || 'PHP';
+    const fromCurr = currency || fromWallet.currency || baseCurrency;
+    const toCurr = toWallet.currency || baseCurrency;
+    const txDate = date || (window.BB_DATA?.getRelativeDateString ? window.BB_DATA.getRelativeDateString(0) : new Date().toISOString().split('T')[0]);
+
+    // Rate from source currency to base
+    const rateSourceToBase = fromCurr === baseCurrency
+      ? 1.0
+      : await fetchExchangeRate(fromCurr, baseCurrency, txDate);
+    const baseAmount = Math.round((numAmount * rateSourceToBase) * 100) / 100;
+
+    // Rate from base to destination currency
+    const rateDestToBase = toCurr === baseCurrency
+      ? 1.0
+      : await fetchExchangeRate(toCurr, baseCurrency, txDate);
+    const destAmount = Math.round((baseAmount / rateDestToBase) * 100) / 100;
+
+    const outTxId = 'tx_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+    const inTxId = 'tx_' + (Date.now() + 1) + '_' + Math.random().toString(36).substring(2, 6);
+
+    const outTx = {
+      id: outTxId,
+      walletId: fromWalletId,
+      date: txDate,
+      item: `⇄ Transfer to ${toWallet.name}`,
+      type: 'transfer_out',
+      isTransfer: true,
+      transferPeerId: toWalletId,
+      transferPeerTxId: inTxId,
+      inputCurrency: fromCurr,
+      inputAmount: numAmount,
+      exchangeRate: rateSourceToBase,
+      credit: 0,
+      debit: baseAmount,
+      notes: notes || '',
+      createdAt: Date.now()
+    };
+
+    const inTx = {
+      id: inTxId,
+      walletId: toWalletId,
+      date: txDate,
+      item: `⇄ Transfer from ${fromWallet.name}`,
+      type: 'transfer_in',
+      isTransfer: true,
+      transferPeerId: fromWalletId,
+      transferPeerTxId: outTxId,
+      inputCurrency: toCurr,
+      inputAmount: destAmount,
+      exchangeRate: (rateSourceToBase / rateDestToBase) || 1.0,
+      credit: baseAmount,
+      debit: 0,
+      notes: notes || '',
+      createdAt: Date.now() + 1
+    };
+
+    state.transactions.push(outTx, inTx);
+    recalculateLedgerBalances();
+    if (window.BB_CORE?.saveData) window.BB_CORE.saveData();
+
+    return { outTx, inTx, baseAmount, destAmount };
+  }
+
+  function openTransferModal(preselectedFromId = null, preselectedToId = null) {
+    if (state.wallets.length < 2) {
+      if (window.BB_CORE?.showToast) {
+        window.BB_CORE.showToast('You need at least 2 wallets to transfer funds. Add another wallet first!', 'info');
+      }
+      return;
+    }
+
+    const sourceSel = document.getElementById('transferSourceWalletSelect');
+    const targetSel = document.getElementById('transferTargetWalletSelect');
+    if (!sourceSel || !targetSel) return;
+
+    const fromId = preselectedFromId || (state.selectedWalletId !== 'all' ? state.selectedWalletId : state.wallets[0]?.id);
+    let toId = preselectedToId || state.wallets.find(w => w.id !== fromId)?.id || state.wallets[1]?.id;
+
+    sourceSel.innerHTML = state.wallets.map(w =>
+      `<option value="${w.id}" ${w.id === fromId ? 'selected' : ''}>${w.icon} ${escapeHtml(w.name)} (${w.currency || 'PHP'})</option>`
+    ).join('');
+
+    targetSel.innerHTML = state.wallets.map(w =>
+      `<option value="${w.id}" ${w.id === toId ? 'selected' : ''}>${w.icon} ${escapeHtml(w.name)} (${w.currency || 'PHP'})</option>`
+    ).join('');
+
+    const updateTransferModalHints = async () => {
+      const sId = sourceSel.value;
+      const tId = targetSel.value;
+      const sWallet = getWallet(sId);
+      const tWallet = getWallet(tId);
+
+      const sBal = sWallet ? getWalletCurrentBalance(sId) : 0;
+      const tBal = tWallet ? getWalletCurrentBalance(tId) : 0;
+
+      const sHint = document.getElementById('transferSourceBalanceHint');
+      const tHint = document.getElementById('transferTargetBalanceHint');
+      const pfx = document.getElementById('transferAmountPrefix');
+
+      if (sHint && sWallet) sHint.textContent = `Available: ${formatForeignCurrency(sBal, sWallet.currency || 'PHP')}`;
+      if (tHint && tWallet) tHint.textContent = `Current: ${formatForeignCurrency(tBal, tWallet.currency || 'PHP')}`;
+      if (pfx && sWallet) pfx.textContent = CURRENCIES[sWallet.currency]?.symbol || sWallet.currency || '₱';
+
+      // FX preview
+      const fxNotice = document.getElementById('transferFxNotice');
+      const fxRateText = document.getElementById('transferFxRateText');
+      const fxConvDisp = document.getElementById('transferConvertedDisplay');
+      const amtInput = document.getElementById('transferAmount');
+      const amt = parseFloat(amtInput?.value) || 0;
+
+      if (sWallet && tWallet && sWallet.currency !== tWallet.currency) {
+        if (fxNotice) fxNotice.style.display = 'block';
+        const baseCurr = state.settings.baseCurrency || 'PHP';
+        const r1 = await fetchExchangeRate(sWallet.currency || baseCurr, baseCurr);
+        const r2 = await fetchExchangeRate(tWallet.currency || baseCurr, baseCurr);
+        const crossRate = r2 > 0 ? (r1 / r2) : 1.0;
+        if (fxRateText) fxRateText.textContent = `Exchange Rate: 1 ${sWallet.currency} = ${crossRate.toFixed(4)} ${tWallet.currency}`;
+        const destEst = amt * crossRate;
+        if (fxConvDisp) fxConvDisp.textContent = formatForeignCurrency(destEst, tWallet.currency);
+      } else {
+        if (fxNotice) fxNotice.style.display = 'none';
+      }
+    };
+
+    sourceSel.onchange = updateTransferModalHints;
+    targetSel.onchange = updateTransferModalHints;
+    const amtEl = document.getElementById('transferAmount');
+    if (amtEl) amtEl.oninput = updateTransferModalHints;
+
+    const dateInput = document.getElementById('transferDate');
+    if (dateInput) dateInput.value = window.BB_DATA?.getRelativeDateString ? window.BB_DATA.getRelativeDateString(0) : new Date().toISOString().split('T')[0];
+
+    updateTransferModalHints();
+    document.getElementById('transferModal')?.classList.add('active');
+    document.getElementById('transferAmount')?.focus();
+  }
+
+  async function deleteWalletWithResolution(sourceId, targetId, resolution) {
     if (!sourceId || !targetId || sourceId === targetId) return;
 
     const sourceWallet = getWallet(sourceId);
     const targetWallet = getWallet(targetId);
     if (!sourceWallet || !targetWallet) return;
 
-    let movedCount = 0;
-    state.transactions.forEach(tx => {
-      if (tx.walletId === sourceId) {
-        tx.walletId = targetId;
-        movedCount++;
+    const currentBalance = getWalletCurrentBalance(sourceId);
+    const baseCurr = state.settings.baseCurrency || 'PHP';
+    const sourceCurr = sourceWallet.currency || baseCurr;
+
+    if (resolution === 'archive') {
+      // Transfer remaining active balance to target wallet first
+      if (Math.abs(currentBalance) > 0.001) {
+        await transferFunds(
+          sourceId,
+          targetId,
+          Math.abs(currentBalance),
+          sourceCurr,
+          window.BB_DATA?.getRelativeDateString ? window.BB_DATA.getRelativeDateString(0) : new Date().toISOString().split('T')[0],
+          `Closing balance transfer from deleted wallet "${sourceWallet.name}"`
+        );
       }
-    });
 
-    const sourceInitial = parseFloat(sourceWallet.initialBalance) || 0;
-    targetWallet.initialBalance = (parseFloat(targetWallet.initialBalance) || 0) + sourceInitial;
+      // Mark transactions as archived
+      let archivedCount = 0;
+      state.transactions.forEach(tx => {
+        if (tx.walletId === sourceId) {
+          tx.isArchived = true;
+          tx.archivedWalletName = sourceWallet.name;
+          tx.archivedWalletId = sourceId;
+          archivedCount++;
+        }
+      });
 
-    state.wallets = state.wallets.filter(w => w.id !== sourceId);
+      state.wallets = state.wallets.filter(w => w.id !== sourceId);
+      if (state.selectedWalletId === sourceId) {
+        state.selectedWalletId = targetId;
+      }
 
-    if (state.selectedWalletId === sourceId) {
-      state.selectedWalletId = targetId;
+      recalculateLedgerBalances();
+      if (window.BB_CORE?.saveData) window.BB_CORE.saveData();
+      populateWalletDropdowns();
+      renderWalletsBar();
+      renderManageWalletsTable();
+
+      document.getElementById('deleteWalletModal')?.classList.remove('active');
+      if (window.BB_CORE?.showToast) {
+        window.BB_CORE.showToast(`Transferred balance to "${targetWallet.name}". Archived ${archivedCount} transactions and deleted "${sourceWallet.name}".`, 'success');
+      }
+    } else {
+      // Reassign transactions to destination wallet
+      let movedCount = 0;
+      state.transactions.forEach(tx => {
+        if (tx.walletId === sourceId) {
+          tx.walletId = targetId;
+          movedCount++;
+        }
+      });
+
+      const sourceInitial = parseFloat(sourceWallet.initialBalance) || 0;
+      targetWallet.initialBalance = (parseFloat(targetWallet.initialBalance) || 0) + sourceInitial;
+
+      state.wallets = state.wallets.filter(w => w.id !== sourceId);
+      if (state.selectedWalletId === sourceId) {
+        state.selectedWalletId = targetId;
+      }
+
+      recalculateLedgerBalances();
+      if (window.BB_CORE?.saveData) window.BB_CORE.saveData();
+      populateWalletDropdowns();
+      renderWalletsBar();
+      renderManageWalletsTable();
+
+      document.getElementById('deleteWalletModal')?.classList.remove('active');
+      if (window.BB_CORE?.showToast) {
+        window.BB_CORE.showToast(`Transferred ${movedCount} transactions & balance to "${targetWallet.name}". Deleted "${sourceWallet.name}".`, 'success');
+      }
     }
+  }
 
-    if (window.BB_CORE?.saveData) window.BB_CORE.saveData();
-    populateWalletDropdowns();
-    renderWalletsBar();
-    renderManageWalletsTable();
-    recalculateLedgerBalances();
-
-    document.getElementById('deleteWalletModal')?.classList.remove('active');
-    if (window.BB_CORE?.showToast) {
-      window.BB_CORE.showToast(`Transferred ${movedCount} transactions & balance to "${targetWallet.name}". Deleted "${sourceWallet.name}".`, 'success');
-    }
+  function reassignAndDeleteWallet(sourceId, targetId) {
+    const resolution = document.getElementById('deleteResolutionArchive')?.checked ? 'archive' : 'reassign';
+    return deleteWalletWithResolution(sourceId, targetId, resolution);
   }
 
   function setupWalletListeners() {
@@ -466,6 +692,44 @@
     document.getElementById('manageWalletsBarBtn')?.addEventListener('click', openWallets);
     document.getElementById('quickAddWalletBtn')?.addEventListener('click', openWallets);
     document.getElementById('quickAddWalletFromFormBtn')?.addEventListener('click', openWallets);
+
+    // Transfer Modal triggers
+    document.getElementById('openTransferModalBtn')?.addEventListener('click', () => openTransferModal());
+    document.getElementById('quickTransferBarBtn')?.addEventListener('click', () => openTransferModal());
+
+    const closeTransfer = () => document.getElementById('transferModal')?.classList.remove('active');
+    document.getElementById('closeTransferModalBtn')?.addEventListener('click', closeTransfer);
+    document.getElementById('cancelTransferModalBtn')?.addEventListener('click', closeTransfer);
+    document.getElementById('transferModal')?.addEventListener('click', (e) => {
+      if (e.target === document.getElementById('transferModal')) closeTransfer();
+    });
+
+    const transferForm = document.getElementById('transferFundsForm');
+    if (transferForm) {
+      transferForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const fromId = document.getElementById('transferSourceWalletSelect')?.value;
+        const toId = document.getElementById('transferTargetWalletSelect')?.value;
+        const amount = document.getElementById('transferAmount')?.value;
+        const date = document.getElementById('transferDate')?.value;
+        const notes = document.getElementById('transferNotes')?.value.trim();
+
+        try {
+          const fromW = getWallet(fromId);
+          const toW = getWallet(toId);
+          await transferFunds(fromId, toId, amount, fromW?.currency, date, notes);
+          closeTransfer();
+          transferForm.reset();
+          if (window.BB_CORE?.showToast) {
+            window.BB_CORE.showToast(`Transferred ${formatForeignCurrency(amount, fromW?.currency || 'PHP')} from ${fromW?.name} to ${toW?.name}!`, 'success');
+          }
+        } catch (err) {
+          if (window.BB_CORE?.showToast) {
+            window.BB_CORE.showToast(err.message || 'Transfer failed.', 'error');
+          }
+        }
+      });
+    }
 
     const closeWallets = () => document.getElementById('walletsModal')?.classList.remove('active');
     document.getElementById('closeWalletsModalBtn')?.addEventListener('click', closeWallets);
@@ -531,11 +795,12 @@
 
     const deleteWalletForm = document.getElementById('deleteWalletForm');
     if (deleteWalletForm) {
-      deleteWalletForm.addEventListener('submit', (e) => {
+      deleteWalletForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const sourceId = document.getElementById('deleteSourceWalletId').value;
         const targetId = document.getElementById('deleteTargetWalletSelect').value;
-        reassignAndDeleteWallet(sourceId, targetId);
+        const resolution = document.getElementById('deleteResolutionArchive')?.checked ? 'archive' : 'reassign';
+        await deleteWalletWithResolution(sourceId, targetId, resolution);
       });
     }
   }
@@ -587,6 +852,11 @@
     let lastInflowBatchDate = null;
 
     sorted.forEach((tx) => {
+      if (tx.isArchived) return;
+      if (walletFilter === 'all' && (tx.isTransfer || tx.type === 'transfer_out' || tx.type === 'transfer_in')) {
+        return;
+      }
+
       const credit = parseFloat(tx.credit) || 0;
       const debit = parseFloat(tx.debit) || 0;
       const txDateObj = new Date(tx.date + 'T00:00:00');
@@ -1416,6 +1686,9 @@
     openEditWalletModal,
     promptDeleteWallet,
     reassignAndDeleteWallet,
+    deleteWalletWithResolution,
+    transferFunds,
+    openTransferModal,
     setupWalletListeners,
     calculateSpendingBuffer,
     updateSpendingBufferDisplay,

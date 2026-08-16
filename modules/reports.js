@@ -107,7 +107,7 @@
 
   function renderExpenseReport() {
     const now = new Date();
-    let expenseTx = state.transactions.filter(tx => (parseFloat(tx.debit) || 0) > 0);
+    let expenseTx = state.transactions.filter(tx => (parseFloat(tx.debit) || 0) > 0 && !tx.isTransfer && tx.type !== 'transfer_out' && !tx.isArchived);
 
     const rWallet = state.reportWalletFilter || 'all';
     if (rWallet !== 'all') {

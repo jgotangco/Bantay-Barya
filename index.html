@@ -601,176 +601,197 @@
                 <circle cx="11" cy="11" r="8"></circle>
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
               </svg>
-              <input type="text" id="ledgerSearchInput" placeholder="Search item, notes, wallet...">
-              <button id="clearSearchBtn" class="clear-search-btn" title="Clear search" style="display: none;">&times;</button>
+              <input type="text" id="ledgerSearchInput" placeholder="Search item, classification, notes, amount, or wallet...">
+              <button type="button" id="clearSearchBtn" class="clear-search-btn" title="Clear search">&times;</button>
             </div>
 
-            <select id="typeFilterSelect" class="form-select-sm" title="Filter by Entry Type">
-              <option value="all">All Types</option>
-              <option value="credit">Credits Only (+)</option>
-              <option value="debit">Debits Only (-)</option>
-              <option value="transfer">Transfers Only (⇄)</option>
-              <option value="archived">Archived History (📦)</option>
+            <!-- Filter by Type -->
+            <select id="typeFilterSelect" class="form-select-sm" title="Filter by Type">
+              <option value="all">All Transactions</option>
+              <option value="debit">Debit (Expenses) Only</option>
+              <option value="credit">Credit (Income) Only</option>
+              <option value="transfer">⇄ Inter-Wallet Transfers</option>
+              <option value="archived">📦 Archived Transactions</option>
             </select>
 
-            <select id="dateRangeFilterSelect" class="form-select-sm" title="Filter by Date Period">
+            <!-- Filter by Date Range -->
+            <select id="dateRangeFilterSelect" class="form-select-sm" title="Filter by Date Range">
               <option value="all">All Time</option>
               <option value="this_month">This Month</option>
               <option value="last_30">Last 30 Days</option>
               <option value="this_year">This Year</option>
             </select>
 
-            <div class="dropdown-wrapper">
-              <button id="exportMenuBtn" class="btn btn-sm btn-outline" title="Data Actions">
+            <!-- Quick Export Dropdown Trigger -->
+            <div class="export-dropdown-wrapper">
+              <button type="button" id="exportMenuBtn" class="btn btn-outline btn-sm" title="Export Ledger">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                   <polyline points="7 10 12 15 17 10"></polyline>
                   <line x1="12" y1="15" x2="12" y2="3"></line>
                 </svg>
-                <span>Export / Import</span>
+                <span>Export</span>
               </button>
-              <div id="exportDropdown" class="dropdown-menu">
-                <button id="exportCsvBtn" class="dropdown-item">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                  Export CSV Ledger
+              <div id="exportDropdown" class="export-dropdown-menu">
+                <button type="button" id="exportCsvBtn" class="export-menu-item">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                  </svg>
+                  <span>Export to CSV File</span>
                 </button>
-                <button id="exportSheetsBtn" class="dropdown-item">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line></svg>
-                  Copy for Google Sheets
+                <button type="button" id="exportSheetsBtn" class="export-menu-item">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                  <span>Copy for Google Sheets (Ctrl+V)</span>
                 </button>
-                <button id="exportJsonBtn" class="dropdown-item">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
-                  Export JSON Backup
+                <button type="button" id="exportJsonBtn" class="export-menu-item">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                  </svg>
+                  <span>Backup JSON (Google Drive)</span>
                 </button>
-                <div class="dropdown-divider"></div>
-                <label for="importJsonInput" class="dropdown-item file-upload-label">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                  Restore JSON Backup
-                  <input type="file" id="importJsonInput" accept=".json" style="display: none;">
+                <label for="importJsonInput" class="export-menu-item" style="cursor: pointer;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="17 8 12 3 7 8"></polyline>
+                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                  </svg>
+                  <span>Restore from JSON Backup</span>
+                  <input type="file" id="importJsonInput" accept=".json,.barya" style="display:none">
                 </label>
-                <button id="loadSampleDataBtn" class="dropdown-item">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-                  Load Sample Data
+                <hr style="margin: 0.35rem 0; border: 0; border-top: 1px solid var(--border-color);">
+                <button type="button" id="loadSampleDataBtn" class="export-menu-item">
+                  <span>💡 Load Sample Demo Data</span>
                 </button>
-                <div class="dropdown-divider"></div>
-                <button id="clearAllDataBtn" class="dropdown-item text-danger">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                  Clear All Data
+                <button type="button" id="clearAllDataBtn" class="export-menu-item text-danger">
+                  <span>🗑️ Clear All Records</span>
                 </button>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Ledger Table with Responsive Horizontal Scroll -->
+        <!-- Table Container -->
         <div class="table-responsive">
           <table class="ledger-table" id="ledgerTable">
             <thead>
               <tr>
-                <th class="th-date" data-sort="date">
+                <th data-sort="date" style="width: 12%;">
                   <span>Date</span>
                   <span class="sort-icon">&#8597;</span>
                 </th>
-                <th class="th-wallet" data-sort="wallet">
-                  <span>Wallet / Account</span>
+                <th data-sort="wallet" style="width: 14%;">
+                  <span>Wallet</span>
                   <span class="sort-icon">&#8597;</span>
                 </th>
-                <th class="th-item" data-sort="item">
+                <th data-sort="item" style="width: 22%;">
                   <span>Expense Item / Classification</span>
                   <span class="sort-icon">&#8597;</span>
                 </th>
-                <th class="th-num th-credit" data-sort="credit">
-                  <span>Credit (+)</span>
+                <th data-sort="credit" class="text-right" style="width: 13%;">
+                  <span>Credit</span>
                   <span class="sort-icon">&#8597;</span>
                 </th>
-                <th class="th-num th-debit" data-sort="debit">
-                  <span>Debit (-)</span>
+                <th data-sort="debit" class="text-right" style="width: 13%;">
+                  <span>Debit</span>
                   <span class="sort-icon">&#8597;</span>
                 </th>
-                <th class="th-num th-balance" data-sort="balance">
+                <th data-sort="balance" class="text-right" style="width: 14%;">
                   <span>Balance</span>
                   <span class="sort-icon">&#8597;</span>
                 </th>
-                <th class="th-notes">Notes</th>
-                <th class="th-actions text-center">Actions</th>
+                <th style="width: 12%;">
+                  <span>Notes</span>
+                </th>
+                <th style="width: 80px;" class="text-center">
+                  <span>Actions</span>
+                </th>
               </tr>
             </thead>
             <tbody id="ledgerTableBody">
-              <!-- Dynamically populated rows -->
+              <!-- Dynamically populated from state.transactions -->
             </tbody>
           </table>
 
-          <!-- Empty State -->
+          <!-- Empty State Container -->
           <div id="emptyStateContainer" class="empty-state" style="display: none;">
             <div class="empty-icon">
               <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
-                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                <rect x="2" y="5" width="20" height="14" rx="2"></rect>
+                <line x1="2" y1="10" x2="22" y2="10"></line>
               </svg>
             </div>
-            <h3>No Transactions Recorded</h3>
-            <p>Your Bantay Barya ledger is ready. Record your first transaction above, create new wallets, or load sample data.</p>
-            <div class="empty-btn-row">
-              <button id="emptyLoadSampleBtn" class="btn btn-sm btn-primary">Load Sample Data</button>
-              <button id="emptyLoadBackupBtn" class="btn btn-sm btn-outline">Restore from Backup</button>
-              <button id="emptySetBalanceBtn" class="btn btn-sm btn-outline">Set Starting Balance</button>
+            <h3>No Transactions Recorded Yet</h3>
+            <p>Start recording your daily expenses or income above to begin tracking your continuous cash flow.</p>
+            <div class="empty-state-actions">
+              <button type="button" id="emptyLoadSampleBtn" class="btn btn-outline">Load Multi-Wallet Demo</button>
+              <button type="button" id="emptyLoadBackupBtn" class="btn btn-outline">Restore Backup</button>
+              <button type="button" id="emptySetBalanceBtn" class="btn btn-primary">Manage Wallets</button>
             </div>
           </div>
         </div>
       </section>
     </main>
 
+    <!-- Footer Attribution with Clickable Links -->
+    <footer class="app-footer">
+      <p>
+        <strong>Bantay Barya</strong> — A multi-wallet expense tracker built on <a href="https://antigravity.google/" target="_blank" rel="noopener noreferrer" class="link-antigravity" title="Visit Antigravity website">Antigravity</a> by <strong>Jerome Gotangco</strong> (<a href="mailto:jeromesg@google.com" class="link-email" title="Email Jerome Gotangco">jeromesg@google.com</a>).
+      </p>
+      <p class="footer-disclaimer">
+        Personal work of the author, not affiliated with or endorsed by Google or any other party.
+      </p>
+    </footer>
+
     <!-- MANAGE WALLETS MODAL -->
     <div id="walletsModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="walletsModalTitle">
       <div class="modal-card modal-lg">
         <div class="modal-header">
           <div class="modal-title-group">
-            <div class="modal-icon-badge" style="background-color: var(--accent-primary-subtle); font-size: 1.3rem;">
-              👛
+            <div class="modal-icon-badge">
+              <span style="font-size: 1.3rem;">👛</span>
             </div>
             <div>
-              <h3 id="walletsModalTitle" class="modal-title">Manage Wallets & Accounts</h3>
-              <p class="modal-subtitle">Create spending wallets, savings, current accounts, and cash trackers</p>
+              <h2 id="walletsModalTitle" class="modal-title">Manage Wallets & Accounts</h2>
+              <p class="modal-subtitle">Track multiple bank accounts, e-wallets, cash reserves & foreign currency balances</p>
             </div>
           </div>
-          <button id="closeWalletsModalBtn" class="btn-close">&times;</button>
+          <button id="closeWalletsModalBtn" class="btn-close" aria-label="Close modal">&times;</button>
         </div>
 
         <div class="modal-body">
-          <!-- Add New Wallet Form -->
+          <!-- Create New Wallet Form Card -->
           <div class="new-wallet-card">
-            <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.75rem;">+ Create New Wallet / Asset Account</h4>
-            <form id="newWalletForm" class="new-wallet-form">
-              <div class="form-grid" style="grid-template-columns: repeat(4, 1fr);">
-                <!-- Wallet Name -->
+            <h3 class="card-title" style="font-size: 0.95rem; margin-bottom: 0.75rem;">➕ Create New Wallet / Account</h3>
+            <form id="newWalletForm" class="new-wallet-form" autocomplete="off">
+              <div class="form-grid">
                 <div class="form-group span-2">
-                  <label for="newWalletName" class="form-label">Wallet / Asset Name *</label>
-                  <input type="text" id="newWalletName" class="form-input" placeholder="e.g. BDO Savings, Bitcoin Cold Wallet, US Stocks (GoTrade), Maya TD" required>
+                  <label for="newWalletName" class="form-label">Wallet Name *</label>
+                  <input type="text" id="newWalletName" class="form-input" placeholder="e.g. Maya Savings, GCash, SeaBank, Personal Cash" required>
                 </div>
-
-                <!-- Wallet Type -->
                 <div class="form-group">
-                  <label for="newWalletType" class="form-label">Asset / Account Type *</label>
+                  <label for="newWalletType" class="form-label">Type / Category *</label>
                   <select id="newWalletType" class="form-input" required>
-                    <option value="ewallet">📱 E-Wallet / Super App (GCash, Maya, GoTyme, Grab)</option>
-                    <option value="spending" selected>👛 Personal Spending</option>
-                    <option value="savings">🏦 Savings / Emergency Fund</option>
-                    <option value="crypto">🪙 Crypto / Digital Assets</option>
-                    <option value="investment">📈 Stocks, Equities & Mutual Funds</option>
-                    <option value="time_deposit">⏳ Time Deposit (TD)</option>
-                    <option value="bond">📜 Bonds & T-Bills (RTB)</option>
-                    <option value="real_estate">🏡 Real Estate Equity / Property</option>
-                    <option value="current">🏛️ Current / Checking Account</option>
+                    <option value="spending">👛 Spending Account</option>
+                    <option value="ewallet">📱 E-Wallet (GCash / Maya / PayPal)</option>
+                    <option value="savings">🏦 High-Yield Savings</option>
                     <option value="cash">💵 Cash on Hand</option>
-                    <option value="credit">💳 Credit Card</option>
-                    <option value="other">📋 Other Capital Asset</option>
+                    <option value="current">🏛️ Checking / Current</option>
+                    <option value="time_deposit">⏳ Time Deposit / TD</option>
+                    <option value="investment">📈 Stocks / Equities</option>
+                    <option value="crypto">🪙 Crypto Asset</option>
+                    <option value="real_estate">🏠 Real Estate / Property</option>
+                    <option value="bond">📜 Bonds / Treasury / RTB</option>
+                    <option value="other">📦 Other Asset</option>
                   </select>
                 </div>
-
-                <!-- Currency Selector -->
                 <div class="form-group">
                   <label for="newWalletCurrency" class="form-label">Currency *</label>
-                  <select id="newWalletCurrency" class="form-input">
+                  <select id="newWalletCurrency" class="form-input" required>
                     <option value="PHP" selected>PHP (₱)</option>
                     <option value="USD">USD ($)</option>
                     <option value="EUR">EUR (€)</option>
@@ -786,63 +807,55 @@
                     <option value="AED">AED (د.إ)</option>
                   </select>
                 </div>
-
-                <!-- Wallet Icon Selector -->
                 <div class="form-group span-2">
-                  <label for="newWalletIcon" class="form-label">Icon / Emoji</label>
-                  <select id="newWalletIcon" class="form-input">
-                    <option value="📱" selected>📱 E-Wallet / GCash / Maya</option>
-                    <option value="👛">👛 Purse / Spending</option>
-                    <option value="🏦">🏦 Bank Account</option>
-                    <option value="🪙">🪙 Crypto / Digital Asset</option>
-                    <option value="₿">₿ Bitcoin</option>
-                    <option value="📈">📈 Stocks / Equities / Funds</option>
-                    <option value="⏳">⏳ Time Deposit (TD)</option>
-                    <option value="📜">📜 Bonds / Treasury Bills</option>
-                    <option value="🏡">🏡 Real Estate / Property</option>
-                    <option value="🐖">🐖 Piggy Bank / Savings</option>
-                    <option value="💵">💵 Cash on Hand</option>
-                    <option value="💳">💳 Credit Card</option>
-                    <option value="✈️">✈️ Travel Fund</option>
-                  </select>
-                </div>
-
-                <!-- Starting Balance (BBF) -->
-                <div class="form-group span-2">
-                  <label for="newWalletInitialBalance" class="form-label">Starting Balance (Native)</label>
+                  <label for="newWalletInitialBalance" class="form-label">Initial Balance Brought Forward (BBF) *</label>
                   <div class="input-prefix-wrapper">
                     <span class="input-prefix" id="newWalletPrefix">₱</span>
                     <input type="number" id="newWalletInitialBalance" class="form-input font-mono" step="any" value="0.00" required>
                   </div>
                 </div>
-
-                <!-- Submit Action -->
-                <div class="form-group span-4" style="justify-content: flex-end; margin-top: 0.25rem;">
-                  <button type="submit" class="btn btn-primary" style="height: 38px;">
-                    <span>Add Wallet</span>
-                  </button>
+                <div class="form-group">
+                  <label for="newWalletIcon" class="form-label">Icon Emoji</label>
+                  <select id="newWalletIcon" class="form-input">
+                    <option value="👛">👛 Purse / Spending</option>
+                    <option value="📱">📱 Mobile / E-Wallet</option>
+                    <option value="🏦">🏦 Bank Vault / Savings</option>
+                    <option value="💵">💵 Cash / Bills</option>
+                    <option value="💳">💳 Card / Account</option>
+                    <option value="📈">📈 Stocks / Portfolio</option>
+                    <option value="🪙">🪙 Crypto / Coins</option>
+                    <option value="⏳">⏳ Time Deposit</option>
+                    <option value="🏠">🏠 Real Estate</option>
+                    <option value="📜">📜 Bonds / Notes</option>
+                    <option value="💎">💎 Reserves / Valuables</option>
+                  </select>
                 </div>
+              </div>
+              <div class="form-actions" style="margin-top: 0.75rem; border-top: none; padding-top: 0;">
+                <button type="submit" class="btn btn-primary btn-sm" id="createWalletBtn">
+                  <span>Create Wallet</span>
+                </button>
               </div>
             </form>
           </div>
 
           <!-- Existing Wallets Table -->
           <div class="existing-wallets-section">
-            <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.65rem;">Active Wallets & Asset Accounts</h4>
+            <h3 class="card-title" style="font-size: 0.95rem; margin-bottom: 0.5rem;">Active Accounts & Wallets</h3>
             <div class="table-responsive">
-              <table class="category-manager-table">
+              <table class="statement-table" id="manageWalletsTable">
                 <thead>
                   <tr>
-                    <th>Wallet / Asset</th>
-                    <th>Type</th>
-                    <th class="text-right">Starting (BBF)</th>
+                    <th>Wallet Name</th>
+                    <th>Category</th>
+                    <th>Currency</th>
+                    <th class="text-right">Initial (BBF)</th>
                     <th class="text-right">Current Balance</th>
-                    <th class="text-right">Base Converted (PHP)</th>
-                    <th class="text-center">Entries</th>
+                    <th class="text-right">Converted (Base PHP)</th>
                     <th class="text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody id="walletsTableBody">
+                <tbody id="manageWalletsTableBody">
                   <!-- Populated dynamically -->
                 </tbody>
               </table>
@@ -851,93 +864,82 @@
         </div>
 
         <div class="modal-footer">
-          <button type="button" id="closeWalletsModalFooterBtn" class="btn btn-primary">Done</button>
+          <button id="closeWalletsModalFooterBtn" class="btn btn-primary">Done</button>
         </div>
       </div>
     </div>
 
     <!-- EDIT WALLET MODAL -->
     <div id="editWalletModal" class="modal-backdrop" role="dialog" aria-modal="true">
-      <div class="modal-card modal-sm">
+      <div class="modal-card modal-md">
         <div class="modal-header">
-          <div class="modal-title-group">
-            <span id="editWalletModalIcon" style="font-size: 1.3rem;">👛</span>
-            <div>
-              <h3 class="modal-title">Edit Wallet / Asset</h3>
-              <p class="modal-subtitle">Update asset details, currency, and starting balance</p>
-            </div>
-          </div>
+          <h3 class="modal-title">Edit Wallet</h3>
           <button id="closeEditWalletModalBtn" class="btn-close">&times;</button>
         </div>
         <form id="editWalletForm">
           <input type="hidden" id="editWalletId">
           <div class="modal-body">
-            <div class="form-group">
-              <label for="editWalletName" class="form-label">Wallet / Asset Name *</label>
-              <input type="text" id="editWalletName" class="form-input" required>
-            </div>
-
-            <div class="form-group">
-              <label for="editWalletType" class="form-label">Asset / Account Type *</label>
-              <select id="editWalletType" class="form-input" required>
-                <option value="ewallet">📱 E-Wallet / Super App (GCash, Maya, GoTyme, Grab)</option>
-                <option value="spending">👛 Personal Spending</option>
-                <option value="savings">🏦 Savings / Emergency Fund</option>
-                <option value="crypto">🪙 Crypto / Digital Assets</option>
-                <option value="investment">📈 Stocks, Equities & Mutual Funds</option>
-                <option value="time_deposit">⏳ Time Deposit (TD)</option>
-                <option value="bond">📜 Bonds & T-Bills (RTB)</option>
-                <option value="real_estate">🏡 Real Estate Equity / Property</option>
-                <option value="current">🏛️ Current / Checking Account</option>
-                <option value="cash">💵 Cash on Hand</option>
-                <option value="credit">💳 Credit Card</option>
-                <option value="other">📋 Other Capital Asset</option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label for="editWalletCurrency" class="form-label">Denominated Currency *</label>
-              <select id="editWalletCurrency" class="form-input">
-                <option value="PHP">PHP (₱)</option>
-                <option value="USD">USD ($)</option>
-                <option value="EUR">EUR (€)</option>
-                <option value="JPY">JPY (¥)</option>
-                <option value="GBP">GBP (£)</option>
-                <option value="SGD">SGD (S$)</option>
-                <option value="AUD">AUD (A$)</option>
-                <option value="CAD">CAD (C$)</option>
-                <option value="HKD">HKD (HK$)</option>
-                <option value="CNY">CNY (¥)</option>
-                <option value="KRW">KRW (₩)</option>
-                <option value="THB">THB (฿)</option>
-                <option value="AED">AED (د.إ)</option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label for="editWalletIcon" class="form-label">Icon / Emoji</label>
-              <select id="editWalletIcon" class="form-input">
-                <option value="👛">👛 Purse / Spending</option>
-                <option value="🏦">🏦 Bank Account</option>
-                <option value="🪙">🪙 Crypto / Digital Asset</option>
-                <option value="₿">₿ Bitcoin</option>
-                <option value="📈">📈 Stocks / Equities / Funds</option>
-                <option value="⏳">⏳ Time Deposit (TD)</option>
-                <option value="📜">📜 Bonds / Treasury Bills</option>
-                <option value="🏡">🏡 Real Estate / Property</option>
-                <option value="🐖">🐖 Piggy Bank / Savings</option>
-                <option value="💵">💵 Cash on Hand</option>
-                <option value="📱">📱 E-Wallet / GCash / Maya</option>
-                <option value="💳">💳 Credit Card</option>
-                <option value="✈️">✈️ Travel Fund</option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label for="editWalletInitialBalance" class="form-label">Starting Balance (Native) *</label>
-              <div class="input-prefix-wrapper">
-                <span class="input-prefix" id="editWalletPrefix">₱</span>
-                <input type="number" id="editWalletInitialBalance" class="form-input font-mono" step="any" required>
+            <div class="form-grid">
+              <div class="form-group span-2">
+                <label for="editWalletName" class="form-label">Wallet Name *</label>
+                <input type="text" id="editWalletName" class="form-input" required>
+              </div>
+              <div class="form-group">
+                <label for="editWalletType" class="form-label">Type / Category *</label>
+                <select id="editWalletType" class="form-input" required>
+                  <option value="spending">👛 Spending Account</option>
+                  <option value="ewallet">📱 E-Wallet (GCash / Maya)</option>
+                  <option value="savings">🏦 High-Yield Savings</option>
+                  <option value="cash">💵 Cash on Hand</option>
+                  <option value="current">🏛️ Checking / Current</option>
+                  <option value="time_deposit">⏳ Time Deposit / TD</option>
+                  <option value="investment">📈 Stocks / Equities</option>
+                  <option value="crypto">🪙 Crypto Asset</option>
+                  <option value="real_estate">🏠 Real Estate / Property</option>
+                  <option value="bond">📜 Bonds / Treasury / RTB</option>
+                  <option value="other">📦 Other Asset</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="editWalletCurrency" class="form-label">Currency *</label>
+                <select id="editWalletCurrency" class="form-input" required>
+                  <option value="PHP">PHP (₱)</option>
+                  <option value="USD">USD ($)</option>
+                  <option value="EUR">EUR (€)</option>
+                  <option value="JPY">JPY (¥)</option>
+                  <option value="GBP">GBP (£)</option>
+                  <option value="SGD">SGD (S$)</option>
+                  <option value="AUD">AUD (A$)</option>
+                  <option value="CAD">CAD (C$)</option>
+                  <option value="HKD">HKD (HK$)</option>
+                  <option value="CNY">CNY (¥)</option>
+                  <option value="KRW">KRW (₩)</option>
+                  <option value="THB">THB (฿)</option>
+                  <option value="AED">AED (د.إ)</option>
+                </select>
+              </div>
+              <div class="form-group span-2">
+                <label for="editWalletInitialBalance" class="form-label">Initial Balance Brought Forward (BBF) *</label>
+                <div class="input-prefix-wrapper">
+                  <span class="input-prefix" id="editWalletPrefix">₱</span>
+                  <input type="number" id="editWalletInitialBalance" class="form-input font-mono" step="any" required>
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="editWalletIcon" class="form-label">Icon Emoji</label>
+                <select id="editWalletIcon" class="form-input">
+                  <option value="👛">👛 Purse / Spending</option>
+                  <option value="📱">📱 Mobile / E-Wallet</option>
+                  <option value="🏦">🏦 Bank Vault / Savings</option>
+                  <option value="💵">💵 Cash / Bills</option>
+                  <option value="💳">💳 Card / Account</option>
+                  <option value="📈">📈 Stocks / Portfolio</option>
+                  <option value="🪙">🪙 Crypto / Coins</option>
+                  <option value="⏳">⏳ Time Deposit</option>
+                  <option value="🏠">🏠 Real Estate</option>
+                  <option value="📜">📜 Bonds / Notes</option>
+                  <option value="💎">💎 Reserves / Valuables</option>
+                </select>
               </div>
             </div>
           </div>
@@ -949,59 +951,66 @@
       </div>
     </div>
 
-    <!-- INTER-WALLET TRANSFER FUNDS MODAL -->
+    <!-- INTER-WALLET TRANSFER FUNDS MODAL (Zero Expense Internal Movement) -->
     <div id="transferModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="transferModalTitle">
       <div class="modal-card modal-md">
         <div class="modal-header">
           <div class="modal-title-group">
-            <div class="modal-icon-badge" style="background-color: var(--credit-bg); color: var(--credit-color); font-size: 1.3rem;">
-              ⇄
+            <div class="modal-icon-badge" style="background-color: var(--accent-primary-subtle); color: var(--accent-primary);">
+              <span style="font-size: 1.3rem;">⇄</span>
             </div>
             <div>
-              <h3 id="transferModalTitle" class="modal-title">Transfer Funds Between Wallets</h3>
-              <p class="modal-subtitle">Internal movement between wallets (zero expense/income)</p>
+              <h2 id="transferModalTitle" class="modal-title">Transfer Funds Between Wallets</h2>
+              <p class="modal-subtitle">Internal money movement between your own accounts with zero expense classification</p>
             </div>
           </div>
-          <button id="closeTransferModalBtn" class="btn-close">&times;</button>
+          <button id="closeTransferModalBtn" class="btn-close" aria-label="Close modal">&times;</button>
         </div>
 
-        <form id="transferFundsForm" class="transfer-funds-form">
+        <form id="transferForm" autocomplete="off">
           <div class="modal-body">
-            <div class="transfer-wallets-grid">
-              <!-- Source Wallet -->
+            <!-- Informational Notice Banner -->
+            <div class="transfer-notice-banner">
+              <span style="font-size: 1.25rem;">ℹ️</span>
+              <p>
+                Transfers move money between your own accounts (e.g. Bank to GCash, or Savings to Cash) <strong>without being counted as an expense</strong> in your reports or distorting your budget.
+              </p>
+            </div>
+
+            <div class="form-grid">
+              <!-- Source Wallet (From) -->
               <div class="form-group span-2">
                 <label for="transferSourceWalletSelect" class="form-label">
-                  <span>From (Source Wallet)</span>
+                  <span>From Wallet (Debit Source)</span>
                   <span class="required-star">*</span>
                 </label>
                 <select id="transferSourceWalletSelect" class="form-input" required>
                   <!-- Populated dynamically -->
                 </select>
-                <div class="transfer-balance-subtext font-mono" id="transferSourceBalanceHint">Available: ₱0.00</div>
               </div>
 
-              <!-- Destination Wallet -->
+              <!-- Destination Wallet (To) -->
               <div class="form-group span-2">
-                <label for="transferTargetWalletSelect" class="form-label">
-                  <span>To (Destination Wallet)</span>
+                <label for="transferDestWalletSelect" class="form-label">
+                  <span>To Destination Wallet (Credit Target)</span>
                   <span class="required-star">*</span>
                 </label>
-                <select id="transferTargetWalletSelect" class="form-input" required>
+                <select id="transferDestWalletSelect" class="form-input" required>
                   <!-- Populated dynamically -->
                 </select>
-                <div class="transfer-balance-subtext font-mono" id="transferTargetBalanceHint">Current: ₱0.00</div>
               </div>
-            </div>
 
-            <div class="form-grid" style="margin-top: 0.75rem;">
-              <!-- Amount and Source Currency -->
+              <!-- Transfer Amount -->
               <div class="form-group span-2">
-                <label for="transferAmount" class="form-label">
-                  <span>Transfer Amount</span>
-                  <span class="required-star">*</span>
-                </label>
+                <div class="label-with-currency-select">
+                  <label for="transferAmount" class="form-label">
+                    <span>Transfer Amount</span>
+                    <span class="required-star">*</span>
+                  </label>
+                  <span id="transferCurrencyBadge" class="form-select-currency font-mono" style="padding: 0.2rem 0.6rem; background: var(--bg-surface-subtle);">PHP (₱)</span>
+                </div>
                 <div class="input-prefix-wrapper">
-                  <span class="input-prefix" id="transferAmountPrefix">₱</span>
+                  <span class="input-prefix" id="transferPrefix">₱</span>
                   <input type="number" id="transferAmount" class="form-input font-mono" step="any" min="0.01" placeholder="0.00" required>
                 </div>
               </div>
@@ -1012,489 +1021,185 @@
                   <span>Transfer Date</span>
                   <span class="required-star">*</span>
                 </label>
-                <input type="date" id="transferDate" class="form-input calendar-input" required>
+                <input type="date" id="transferDate" class="form-input font-mono" required>
               </div>
 
-              <!-- FX Conversion Notice (if multi-currency) -->
-              <div class="form-group span-full" id="transferFxNotice" style="display: none;">
-                <div class="fx-rate-box">
-                  <div class="fx-rate-info">
-                    <span class="fx-live-indicator">
-                      <span class="fx-pulse-dot"></span>
-                      <span id="transferFxRateText">Exchange Rate: 1 USD = 58.50 PHP</span>
-                    </span>
-                    <span class="fx-converted-text">
-                      Destination Receives: <strong id="transferConvertedDisplay" class="font-mono">₱0.00</strong>
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Notes -->
+              <!-- Reason / Notes -->
               <div class="form-group span-full">
                 <label for="transferNotes" class="form-label">
-                  <span>Notes / Reason (Optional)</span>
+                  <span>Transfer Notes / Reference (Optional)</span>
                 </label>
-                <input type="text" id="transferNotes" class="form-input" placeholder="e.g. Bank to e-wallet cash-in, savings allocation...">
+                <input type="text" id="transferNotes" class="form-input" placeholder="e.g. Top up GCash for daily commute, ATM cash withdrawal">
               </div>
             </div>
           </div>
 
           <div class="modal-footer">
-            <button type="button" id="cancelTransferModalBtn" class="btn btn-ghost">Cancel</button>
-            <button type="submit" class="btn btn-primary" id="submitTransferBtn">
-              <span>Execute Transfer</span>
+            <button type="button" id="cancelTransferBtn" class="btn btn-ghost">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="executeTransferBtn">
+              <span>⇄ Complete Transfer</span>
             </button>
           </div>
         </form>
       </div>
     </div>
 
-    <!-- DELETE WALLET & REASSIGN / ARCHIVE MODAL -->
-    <div id="deleteWalletModal" class="modal-backdrop" role="dialog" aria-modal="true">
+    <!-- WALLET DELETION SAFEGUARD & REALLOCATION MODAL -->
+    <div id="deleteWalletModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="deleteWalletTitle">
       <div class="modal-card modal-md">
-        <div class="modal-header">
+        <div class="modal-header" style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.05) 100%);">
           <div class="modal-title-group">
-            <div class="modal-icon-badge text-danger" style="background-color: var(--debit-bg);">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                <line x1="12" y1="9" x2="12" y2="13"></line>
-                <line x1="12" y1="17" x2="12.01" y2="17"></line>
-              </svg>
+            <div class="modal-icon-badge text-danger" style="background-color: var(--debit-bg); font-size: 1.3rem;">
+              ⚠️
             </div>
             <div>
-              <h3 class="modal-title">Delete Wallet & Balance Transfer</h3>
-              <p class="modal-subtitle">Safely transfer remaining balances and handle transaction history</p>
+              <h2 id="deleteWalletTitle" class="modal-title">Delete Wallet Account</h2>
+              <p class="modal-subtitle">Transfer remaining balance and reassign/archive transactions</p>
             </div>
           </div>
-          <button id="closeDeleteWalletModalBtn" class="btn-close">&times;</button>
+          <button id="closeDeleteWalletModalBtn" class="btn-close" aria-label="Close modal">&times;</button>
         </div>
+
         <form id="deleteWalletForm">
-          <input type="hidden" id="deleteSourceWalletId">
+          <input type="hidden" id="deleteWalletTargetId" value="">
           <div class="modal-body">
-            <!-- Balance & Count Banner -->
-            <div class="reassign-alert-banner" id="deleteWalletAlertBanner">
-              <p>You are closing wallet <strong id="deleteSourceWalletName" class="debit-text"></strong> with <strong id="deleteSourceTxCount">0</strong> transactions and an active balance of <strong id="deleteSourceBalance" class="font-mono">₱0.00</strong>.</p>
-              <div id="deleteWalletBalanceRuleNotice" style="margin-top: 0.5rem; font-size: 0.82rem; color: var(--debit-color); font-weight: 600;">
-                ⚠️ A wallet cannot be deleted while there is still a balance. The remaining balance must be transferred to another wallet.
+            <!-- Wallet Summary Banner -->
+            <div class="delete-wallet-summary-box">
+              <div class="delete-summary-icon" id="deleteWalletIcon">👛</div>
+              <div class="delete-summary-details">
+                <h4 id="deleteWalletName">Wallet Name</h4>
+                <div class="delete-summary-stats font-mono">
+                  <span>Balance: <strong id="deleteWalletBalance" class="credit-text">₱0.00</strong></span>
+                  <span>•</span>
+                  <span><strong id="deleteWalletTxCount">0</strong> transactions</span>
+                </div>
               </div>
             </div>
 
-            <!-- Mandatory Destination Wallet for Balance -->
-            <div class="form-group" style="margin-top: 0.85rem;" id="deleteTargetWalletGroup">
-              <label for="deleteTargetWalletSelect" class="form-label">
-                <span>Transfer remaining balance to destination wallet:</span>
+            <!-- Warning Notice: Balance MUST be zeroed / transferred before deletion -->
+            <div id="deleteBalanceWarningBanner" class="delete-balance-warning" style="display: none;">
+              <span style="font-size: 1.2rem;">🛑</span>
+              <div style="font-size: 0.84rem; line-height: 1.45;">
+                <strong>Active Balance Detected:</strong> You cannot delete a wallet that still holds funds. Select a destination wallet below to transfer the full remaining balance (<strong id="deleteTransferAmountDisplay" class="font-mono">₱0.00</strong>) before deleting.
+              </div>
+            </div>
+
+            <!-- Destination Wallet Selection for Balance Transfer -->
+            <div class="form-group" id="deleteBalanceTransferGroup" style="display: none;">
+              <label for="deleteTransferDestWallet" class="form-label">
+                <span>Transfer remaining balance to:</span>
                 <span class="required-star">*</span>
               </label>
-              <select id="deleteTargetWalletSelect" class="form-input" required>
-                <!-- Populated dynamically with remaining wallets -->
+              <select id="deleteTransferDestWallet" class="form-input">
+                <!-- Populated dynamically with other wallets -->
               </select>
             </div>
 
-            <!-- Historical Transactions Resolution -->
-            <div class="form-group" style="margin-top: 1rem;">
+            <!-- Transaction Reallocation / Archiving Choice -->
+            <div class="form-group" id="deleteTxReallocationGroup">
               <label class="form-label">
-                <span>Historical Transactions Handling:</span>
+                <span>What should happen to existing transactions in this wallet?</span>
                 <span class="required-star">*</span>
               </label>
-              <div class="resolution-radio-group">
-                <label class="radio-card-option">
-                  <input type="radio" name="deleteTxResolution" value="reassign" checked id="deleteResolutionReassign">
-                  <div class="radio-card-content">
-                    <strong>Reassign to Destination Wallet</strong>
-                    <p>Move all past transactions into the destination wallet ledger.</p>
+
+              <div class="delete-tx-options-grid">
+                <label class="pill-label delete-option-label">
+                  <input type="radio" name="deleteTxAction" value="reassign" checked id="deleteActionReassign">
+                  <div class="delete-option-card">
+                    <strong>🔄 Reassign Transactions</strong>
+                    <p>Move all ledger entries to another active wallet so your continuous balance history remains intact.</p>
+                    <select id="deleteReassignDestWallet" class="form-input form-input-sm" style="margin-top: 0.5rem;">
+                      <!-- Populated dynamically -->
+                    </select>
                   </div>
                 </label>
-                <label class="radio-card-option">
-                  <input type="radio" name="deleteTxResolution" value="archive" id="deleteResolutionArchive">
-                  <div class="radio-card-content">
-                    <strong>Archive Historical Transactions</strong>
-                    <p>Transfer balance out via a closing transfer, then preserve past entries as historical archives.</p>
+
+                <label class="pill-label delete-option-label">
+                  <input type="radio" name="deleteTxAction" value="archive" id="deleteActionArchive">
+                  <div class="delete-option-card">
+                    <strong>📦 Archive Transactions</strong>
+                    <p>Mark entries as archived history (hidden from active ledger view, preserved for record-keeping).</p>
                   </div>
                 </label>
               </div>
             </div>
           </div>
+
           <div class="modal-footer">
             <button type="button" id="cancelDeleteWalletBtn" class="btn btn-ghost">Cancel</button>
-            <button type="submit" class="btn btn-primary" style="background-color: var(--debit-color);" id="confirmDeleteWalletSubmitBtn">
-              Transfer Balance & Delete Wallet
+            <button type="submit" class="btn btn-primary" id="confirmDeleteWalletBtn" style="background-color: var(--debit-color);">
+              <span>Confirm Transfer & Delete Wallet</span>
             </button>
           </div>
         </form>
       </div>
     </div>
 
-    <!-- ABOUT BANTAY BARYA MODAL -->
-    <div id="aboutModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="aboutModalTitle">
-      <div class="modal-card modal-md">
-        <div class="modal-header">
-          <div class="modal-title-group">
-            <div class="brand-icon" style="width: 42px; height: 42px;">
-              <img src="icons/icon.svg" alt="Bantay Barya" width="42" height="42">
-            </div>
-            <div>
-              <div style="display: flex; align-items: center; gap: 0.5rem;">
-                <h3 id="aboutModalTitle" class="modal-title">About Bantay Barya</h3>
-                <span class="version-tag-badge">v2.9.0</span>
-              </div>
-              <p class="modal-subtitle">A multi-wallet expense and income tracker.</p>
-            </div>
-          </div>
-          <button id="closeAboutModalBtn" class="btn-close">&times;</button>
-        </div>
-
-        <div class="modal-body">
-          <div class="about-info-card">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.35rem;">
-              <h4 style="font-size: 1.15rem; font-weight: 700; color: var(--text-primary); margin: 0;">Bantay Barya</h4>
-              <span class="version-pill">Version 2.9.0</span>
-            </div>
-            <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.85rem;">
-              A multi-wallet expense and income tracker.
-            </p>
-            <div class="author-badge-card">
-              <span>Built by <strong>Jerome Gotangco</strong> (<a href="mailto:jeromesg@google.com" class="link-email">jeromesg@google.com</a>) with <a href="https://antigravity.google/" target="_blank" rel="noopener noreferrer" class="link-antigravity"><strong>Antigravity</strong></a>.</span>
-            </div>
-          </div>
-
-          <!-- Changelog Button -->
-          <div class="about-changelog-action-card" style="margin: 0.85rem 0;">
-            <button type="button" id="aboutOpenChangelogBtn" class="btn btn-outline btn-block" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.65rem 1rem;">
-              <span style="font-size: 1.1rem;">📜</span>
-              <span><strong>View App Changelog & Release Notes</strong></span>
-            </button>
-          </div>
-
-          <div class="disclaimer-card">
-            <div class="disclaimer-header">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                <line x1="12" y1="9" x2="12" y2="13"></line>
-                <line x1="12" y1="17" x2="12.01" y2="17"></line>
-              </svg>
-              <strong>Disclaimer & Personal Project Notice</strong>
-            </div>
-            <p class="disclaimer-text">
-              This application is a <strong>personal work of the author</strong> and is <strong>not associated with, endorsed by, or affiliated with Google or any other party</strong>.
-            </p>
-            <p class="disclaimer-text" style="margin-top: 0.4rem;">
-              This application is for demonstration and personal use only. No warranties or guarantees of any kind, express or implied, are provided regarding financial accuracy, continuous availability, or fitness for any purpose.
-            </p>
-          </div>
-
-          <div class="about-feedback-row">
-            <a href="mailto:jeromesg@google.com?subject=Bantay%20Barya%20Feedback" class="btn btn-outline btn-sm" style="text-decoration: none;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                <polyline points="22,6 12,13 2,6"></polyline>
-              </svg>
-              <span>Send Feedback (jeromesg@google.com)</span>
-            </a>
-          </div>
-        </div>
-
-        <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-          <button type="button" id="aboutOpenGuideBtn" class="btn btn-outline btn-sm">
-            <span>📚 Tutorial & PH Financial Guide</span>
-          </button>
-          <div style="display: flex; gap: 0.5rem; align-items: center;">
-            <button type="button" id="aboutBackToSettingsBtn" class="btn btn-outline btn-sm">⚙️ Back to Settings</button>
-            <button type="button" id="closeAboutModalFooterBtn" class="btn btn-primary btn-sm">Close</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- APP CHANGELOG MODAL -->
-    <div id="changelogModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="changelogModalTitle">
-      <div class="modal-card modal-md">
-        <div class="modal-header">
-          <div class="modal-title-group">
-            <div class="modal-icon-badge" style="background-color: rgba(37, 99, 235, 0.12); color: var(--accent-primary);">
-              <span style="font-size: 1.25rem;">📜</span>
-            </div>
-            <div>
-              <div style="display: flex; align-items: center; gap: 0.5rem;">
-                <h3 id="changelogModalTitle" class="modal-title">Changelog</h3>
-                <span class="version-tag-badge">Latest: v2.9.0</span>
-              </div>
-              <p class="modal-subtitle">Release history and updates for Bantay Barya</p>
-            </div>
-          </div>
-          <button id="closeChangelogModalBtn" class="btn-close" aria-label="Close changelog modal">&times;</button>
-        </div>
-
-        <div class="modal-body" style="max-height: 65vh; overflow-y: auto;">
-          <div class="changelog-timeline">
-            <!-- v2.9.0 -->
-            <div class="changelog-release-card active">
-              <div class="changelog-release-header">
-                <div class="changelog-ver-row">
-                  <span class="changelog-badge current">v2.9.0 (Latest)</span>
-                  <span class="changelog-date">August 2026</span>
-                </div>
-                <h4 class="changelog-title">Google Drive Setup Guide & Clean Button Formatting</h4>
-              </div>
-              <ul class="changelog-list">
-                <li><strong>Google Drive In-App Guide</strong>: Added Step 8 in the Tutorial Guide detailing how to save, sync, and run Bantay Barya directly in your personal Google Drive for Desktop or via cloud backups.</li>
-                <li><strong>Streamlined Button Labels</strong>: Formatted all wallet creation buttons cleanly as <code>Add Wallet</code>.</li>
-              </ul>
-            </div>
-
-            <!-- v2.8.0 -->
-            <div class="changelog-release-card">
-              <div class="changelog-release-header">
-                <div class="changelog-ver-row">
-                  <span class="changelog-badge">v2.8.0</span>
-                  <span class="changelog-date">August 2026</span>
-                </div>
-                <h4 class="changelog-title">E-Wallet & Super App Account Type (GCash, Maya, GoTyme, Grab)</h4>
-              </div>
-              <ul class="changelog-list">
-                <li><strong>E-Wallet Account Type</strong>: Added dedicated <code>E-Wallet</code> classification for GCash, Maya, GoTyme, Grab, and super apps with instant tracking and balance sheet integration.</li>
-                <li><strong>Clean Button Formatting</strong>: Formatted all Add Wallet triggers cleanly as <code>+ Add Wallet</code> across the transaction form and wallets manager.</li>
-              </ul>
-            </div>
-
-            <!-- v2.7.0 -->
-            <div class="changelog-release-card">
-              <div class="changelog-release-header">
-                <div class="changelog-ver-row">
-                  <span class="changelog-badge">v2.7.0</span>
-                  <span class="changelog-date">August 2026</span>
-                </div>
-                <h4 class="changelog-title">Saves & About in Settings + Full Mobile & Tablet Responsiveness</h4>
-              </div>
-              <ul class="changelog-list">
-                <li><strong>Unified Settings Experience</strong>: Consolidated "Saves" (Save Vault, .barya exports, snapshots) and "About" (release notes, version details, and developer support) into the Settings hub.</li>
-                <li><strong>Mobile & Tablet Browser Detection</strong>: Automatic device viewport and touch engine dynamically adapts the UI for smartphones, iPads, Android tablets, and PCs.</li>
-                <li><strong>Mobile Bottom Navigation Bar</strong>: Touch-optimized bottom navigation dock with Quick Entry FAB, Wallets, Bills, Debts, Reports, and Settings.</li>
-                <li><strong>Touch-Friendly Forms & Bottom Sheets</strong>: Responsive bottom-sheet modals with non-zooming input fields (16px base) and touch-friendly targets.</li>
-              </ul>
-            </div>
-
-            <!-- v2.6.0 -->
-            <div class="changelog-release-card">
-              <div class="changelog-release-header">
-                <div class="changelog-ver-row">
-                  <span class="changelog-badge">v2.6.0</span>
-                  <span class="changelog-date">August 2026</span>
-                </div>
-                <h4 class="changelog-title">5-Minute Auto-Save Engine & Live Last-Saved Indicator</h4>
-              </div>
-              <ul class="changelog-list">
-                <li><strong>Automatic 5-Minute Auto-Save</strong>: Automatically persits wallets, transactions, save slots, and bill schedules every 5 minutes in the background.</li>
-                <li><strong>Live Last-Saved Timestamp Display</strong>: Real-time status indicator in the header and settings with live relative timestamps ("Saved just now", "Saved 2m ago").</li>
-                <li><strong>1-Click Manual Save Trigger</strong>: Click the header indicator or Settings button anytime to immediately save state on demand.</li>
-              </ul>
-            </div>
-
-            <!-- v2.5.0 -->
-            <div class="changelog-release-card">
-              <div class="changelog-release-header">
-                <div class="changelog-ver-row">
-                  <span class="changelog-badge">v2.5.0</span>
-                  <span class="changelog-date">August 2026</span>
-                </div>
-                <h4 class="changelog-title">Bill Tracker, Recurring Schedules & Glowing Due Alerts</h4>
-              </div>
-              <ul class="changelog-list">
-                <li><strong>Bill Tracker & Payment Schedule</strong>: Added a dedicated Bill Tracker hub to record upcoming utilities, subscriptions, and financial obligations.</li>
-                <li><strong>Recurring & One-Time Schedules</strong>: Support for Weekly, Bi-weekly, Monthly, Bi-monthly, Quarterly, Semi-Annually, and Annual recurrence schedules.</li>
-                <li><strong>Custom Alert Lead Times</strong>: Choose alert lead times (On due date, 1d, 2d, 3d, 5d, 7d, or 14d before).</li>
-                <li><strong>Glowing Due Reminders & Header Alerts</strong>: Dynamic pulsing amber/red glow on the header "Bills" button with badge counter and in-app reminder notices.</li>
-                <li><strong>1-Click Settle & Auto-Post</strong>: Mark bills as paid to automatically roll over recurring schedules and optionally log matching debit transactions in your ledger.</li>
-              </ul>
-            </div>
-
-            <!-- v2.4.0 -->
-            <div class="changelog-release-card">
-              <div class="changelog-release-header">
-                <div class="changelog-ver-row">
-                  <span class="changelog-badge">v2.4.0</span>
-                  <span class="changelog-date">August 2026</span>
-                </div>
-                <h4 class="changelog-title">Multi-Asset Tracking, 3-Month Bar Chart & Selective Snowball</h4>
-              </div>
-              <ul class="changelog-list">
-                <li><strong>3-Month Assets vs Liabilities Chart</strong>: Added 4th carousel slide comparing Total Assets, Liabilities, and Net Worth over 3 rolling months.</li>
-                <li><strong>Selective Debt Simulation</strong>: Added checkboxes and Select/Deselect All buttons to simulate specific debt combinations.</li>
-                <li><strong>Crypto, Stocks & TD Assets</strong>: Extended wallet types for Cryptocurrency, Equities, Time Deposits, and Bonds with automatic FX conversion to Philippine Pesos (PHP).</li>
-                <li><strong>Dedicated Balance Sheet Print</strong>: Print button now isolates the formal Statement of Financial Position for clean reporting.</li>
-                <li><strong>Version & Changelog Hub</strong>: Added in-app version indicator and release notes viewer in About page.</li>
-              </ul>
-            </div>
-
-            <!-- v2.3.0 -->
-            <div class="changelog-release-card">
-              <div class="changelog-release-header">
-                <div class="changelog-ver-row">
-                  <span class="changelog-badge">v2.3.0</span>
-                  <span class="changelog-date">August 2026</span>
-                </div>
-                <h4 class="changelog-title">Philippine EIR Interest Rates & Financial Literacy Guide</h4>
-              </div>
-              <ul class="changelog-list">
-                <li><strong>Philippine Interest Rates</strong>: Adopted Effective Interest Rate (EIR % p.a.) and Monthly Rate (% / mo) with live 2-way input sync.</li>
-                <li><strong>Philippine Loan Presets</strong>: Added 1-click presets for Credit Cards (3.0%/mo cap), Auto Loans, Mortgages, and SSS/Pag-IBIG loans.</li>
-                <li><strong>Financial Literacy Hub (📚 Guide)</strong>: Added interactive documentation explaining Philippine economic realities and best practices.</li>
-              </ul>
-            </div>
-
-            <!-- v2.2.0 -->
-            <div class="changelog-release-card">
-              <div class="changelog-release-header">
-                <div class="changelog-ver-row">
-                  <span class="changelog-badge">v2.2.0</span>
-                  <span class="changelog-date">August 2026</span>
-                </div>
-                <h4 class="changelog-title">Liabilities Management, Debt Snowball & Balance Sheet</h4>
-              </div>
-              <ul class="changelog-list">
-                <li><strong>Debt Snowball & Avalanche</strong>: Payoff roadmap calculator with extra monthly and 13th-month lump sum advance simulation.</li>
-                <li><strong>Statement of Financial Position</strong>: Full accounting Balance Sheet balancing Assets = Liabilities + Real Net Worth.</li>
-                <li><strong>Loan Payment Logging</strong>: Ability to log payments directly with automatic debit from selected wallets.</li>
-              </ul>
-            </div>
-
-            <!-- v2.1.0 -->
-            <div class="changelog-release-card">
-              <div class="changelog-release-header">
-                <div class="changelog-ver-row">
-                  <span class="changelog-badge">v2.1.0</span>
-                  <span class="changelog-date">August 2026</span>
-                </div>
-                <h4 class="changelog-title">Multi-Save Vault (.barya) & Browser Extension</h4>
-              </div>
-              <ul class="changelog-list">
-                <li><strong>Save Vault</strong>: Support for multiple independent save slots and <code>.barya</code> ledger backups.</li>
-                <li><strong>Browser Extension</strong>: Manifest V3 Chrome/Edge extension for 2-second expense logging while shopping online.</li>
-                <li><strong>Spending Buffer Runway</strong>: Continuous 30-day cash runway metric calculation.</li>
-                <li><strong>1-Minute Wisdom Ticker</strong>: Rotating financial wisdom ticker cycling every 60 seconds.</li>
-              </ul>
-            </div>
-
-            <!-- v2.0.0 -->
-            <div class="changelog-release-card">
-              <div class="changelog-release-header">
-                <div class="changelog-ver-row">
-                  <span class="changelog-badge">v2.0.0</span>
-                  <span class="changelog-date">August 2026</span>
-                </div>
-                <h4 class="changelog-title">Multi-Wallet Continuous Ledger & FX Exchange</h4>
-              </div>
-              <ul class="changelog-list">
-                <li><strong>Multi-Wallet Architecture</strong>: Independent wallets (Spending, Savings, Cash, Checking) with switcher bar.</li>
-                <li><strong>Live FX Currency Engine</strong>: Automatic exchange rate conversions for international transactions (USD, EUR, JPY, SGD, etc.).</li>
-                <li><strong>Bank Balance Reconciliation (🤝)</strong>: Periodically balance ledger against actual bank statements.</li>
-              </ul>
-            </div>
-
-            <!-- v1.0.0 -->
-            <div class="changelog-release-card">
-              <div class="changelog-release-header">
-                <div class="changelog-ver-row">
-                  <span class="changelog-badge">v1.0.0</span>
-                  <span class="changelog-date">August 2026</span>
-                </div>
-                <h4 class="changelog-title">Initial Release</h4>
-              </div>
-              <ul class="changelog-list">
-                <li>Single-ledger continuous expense and income tracker.</li>
-                <li>Category Manager with transaction reassignment.</li>
-                <li>CSV and Google Sheets export tools.</li>
-                <li>7-Digit PIN security protection and PWA install shortcut.</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-          <button type="button" id="backToAboutBtn" class="btn btn-ghost btn-sm">&larr; Back to About</button>
-          <div style="display: flex; gap: 0.5rem; align-items: center;">
-            <button type="button" id="changelogBackToSettingsBtn" class="btn btn-outline btn-sm">⚙️ Back to Settings</button>
-            <button type="button" id="closeChangelogModalFooterBtn" class="btn btn-primary btn-sm">Close</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- BALANCE RECONCILIATION MODAL (HANDSHAKE 🤝) -->
+    <!-- RECONCILIATION MODAL (Two Hands Shaking Balance Adjustment) -->
     <div id="reconcileModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="reconcileModalTitle">
       <div class="modal-card modal-md">
         <div class="modal-header">
           <div class="modal-title-group">
-            <div class="modal-icon-badge" style="background-color: var(--accent-primary-subtle); font-size: 1.3rem;">
-              🤝
+            <div class="modal-icon-badge" style="background-color: rgba(16, 185, 129, 0.15); color: var(--credit-color);">
+              <span class="handshake-icon-span" style="font-size: 1.4rem;">🤝</span>
             </div>
             <div>
-              <h3 id="reconcileModalTitle" class="modal-title">Balance Reconciliation</h3>
-              <p class="modal-subtitle">Adjust wallet ledger to match your actual statement balance</p>
+              <h2 id="reconcileModalTitle" class="modal-title">Reconcile Wallet Balance</h2>
+              <p class="modal-subtitle">Match your wallet ledger with your actual bank or statement balance</p>
             </div>
           </div>
-          <button id="closeReconcileModalBtn" class="btn-close">&times;</button>
+          <button id="closeReconcileModalBtn" class="btn-close" aria-label="Close modal">&times;</button>
         </div>
 
-        <form id="reconcileForm">
+        <form id="reconcileForm" autocomplete="off">
           <div class="modal-body">
-            <!-- Target Wallet Selection for Reconciliation -->
-            <div class="form-group mb-2">
-              <label for="reconcileWalletSelect" class="form-label">
-                <span>Select Wallet to Reconcile</span>
-                <span class="required-star">*</span>
-              </label>
-              <select id="reconcileWalletSelect" class="form-input" required>
-                <!-- Populated dynamically -->
-              </select>
+            <!-- Informational Explanation -->
+            <div class="reconcile-info-card">
+              <span class="reconcile-info-icon">🤝</span>
+              <p>
+                Enter your <strong>actual balance</strong> from your bank statement, online app, or physical wallet count. Bantay Barya will calculate the difference and create a single <strong>Balance Reconciliation</strong> entry to bring your ledger in 100% agreement.
+              </p>
             </div>
 
-            <div class="form-grid" style="grid-template-columns: 1fr 1fr;">
-              <!-- Current Running Balance -->
+            <div class="reconcile-inputs-grid">
+              <!-- Target Wallet -->
               <div class="form-group">
-                <label class="form-label">Current Ledger Balance</label>
-                <div class="balance-preview-box font-mono" id="reconcileCurrentBalDisplay" style="font-weight: 700;">
-                  ₱0.00
-                </div>
+                <label for="reconcileWalletSelect" class="form-label">Wallet to Reconcile *</label>
+                <select id="reconcileWalletSelect" class="form-input" required>
+                  <!-- Populated dynamically with wallets -->
+                </select>
               </div>
 
-              <!-- Target Actual Statement Balance -->
+              <!-- Current App Ledger Balance (Read-only) -->
               <div class="form-group">
-                <label for="reconcileActualInput" class="form-label">
-                  <span>Actual Statement Balance</span>
+                <label class="form-label">Current App Ledger Balance</label>
+                <div class="reconcile-display-val font-mono" id="reconcileCurrentAppBal">₱0.00</div>
+              </div>
+
+              <!-- Actual Bank / Statement Balance -->
+              <div class="form-group">
+                <label for="reconcileActualBalance" class="form-label">
+                  <span>Actual Statement / Bank Balance</span>
                   <span class="required-star">*</span>
                 </label>
                 <div class="input-prefix-wrapper">
-                  <span class="input-prefix" id="reconcileCurrencyPrefix">₱</span>
-                  <input type="number" id="reconcileActualInput" class="form-input font-mono" step="0.01" placeholder="0.00" required>
+                  <span class="input-prefix" id="reconcilePrefix">₱</span>
+                  <input type="number" id="reconcileActualBalance" class="form-input font-mono" step="any" placeholder="0.00" required>
                 </div>
               </div>
-            </div>
 
-            <!-- Calculated Adjustment Preview Box -->
-            <div class="reconcile-diff-box" id="reconcileDiffBox">
-              <div>
-                <div class="reconcile-diff-label">Calculated Adjustment:</div>
-                <small style="color: var(--text-secondary);" id="reconcileDiffTypeLabel">Classified as: <strong>Balance Reconciliation</strong></small>
+              <!-- Calculated Adjustment Difference (Real-time preview) -->
+              <div class="form-group">
+                <label class="form-label">Required Adjustment Entry</label>
+                <div class="reconcile-display-val font-mono" id="reconcileAdjustmentPreview">
+                  ₱0.00 (No discrepancy)
+                </div>
               </div>
-              <div class="reconcile-diff-val font-mono" id="reconcileDiffDisplay">₱0.00 (No difference)</div>
-            </div>
 
-            <div class="form-grid" style="grid-template-columns: 1fr 1fr; margin-top: 0.5rem;">
-              <!-- Reconciliation Date -->
+              <!-- Date -->
               <div class="form-group">
                 <label for="reconcileDate" class="form-label">Reconciliation Date *</label>
-                <div class="calendar-input-wrapper">
-                  <input type="date" id="reconcileDate" class="form-input calendar-input" required>
-                  <button type="button" id="reconcileCalendarPickerBtn" class="calendar-trigger-btn">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                      <line x1="16" y1="2" x2="16" y2="6"></line>
-                      <line x1="8" y1="2" x2="8" y2="6"></line>
-                      <line x1="3" y1="10" x2="21" y2="10"></line>
-                    </svg>
-                  </button>
-                </div>
+                <input type="date" id="reconcileDate" class="form-input font-mono" required>
               </div>
 
               <!-- Reason / Notes -->
@@ -1532,9 +1237,50 @@
         </div>
 
         <div class="modal-body">
-          <p class="welcome-intro-text">
-            Choose how you would like to get started with your multi-wallet expense tracker:
-          </p>
+          <!-- Option: Load Latest Saved Ledger Hero Card -->
+          <div class="welcome-saved-hero-card" id="welcomeSavedHeroCard">
+            <div class="welcome-saved-hero-content">
+              <div class="welcome-saved-badge-row">
+                <span class="welcome-saved-pill" id="welcomeSavedStatusPill">
+                  <span class="autosave-dot"></span>
+                  <span id="welcomeSavedStatusText">Active Saved Ledger</span>
+                </span>
+                <span class="welcome-saved-time font-mono" id="welcomeSavedTimeDisplay">Last saved: Just now</span>
+              </div>
+              <div class="welcome-saved-info-row">
+                <div class="welcome-saved-title-group">
+                  <span class="welcome-saved-icon" id="welcomeSavedIcon">🌟</span>
+                  <div>
+                    <h4 class="welcome-saved-name" id="welcomeSavedName">Primary Ledger</h4>
+                    <p class="welcome-saved-desc" id="welcomeSavedDesc">Main continuous multi-wallet personal finance ledger</p>
+                  </div>
+                </div>
+                <div class="welcome-saved-stats font-mono">
+                  <div class="welcome-saved-stat-item">
+                    <span class="stat-label">Net Balance</span>
+                    <span class="stat-val" id="welcomeSavedBalance">₱0.00</span>
+                  </div>
+                  <div class="welcome-saved-stat-item">
+                    <span class="stat-label">Wallets</span>
+                    <span class="stat-val" id="welcomeSavedWalletsCount">1</span>
+                  </div>
+                  <div class="welcome-saved-stat-item">
+                    <span class="stat-label">Transactions</span>
+                    <span class="stat-val" id="welcomeSavedTxCount">0</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="welcome-saved-action-row">
+              <button type="button" id="welcomeLoadSavedBtn" class="btn btn-primary btn-welcome-load">
+                <span>▶️ Load Latest Saved Ledger</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="welcome-section-divider">
+            <span>Or Choose Another Option</span>
+          </div>
 
           <div class="welcome-options-grid three-col">
             <!-- Option 1: Start Fresh -->
@@ -1598,7 +1344,7 @@
                 <h4>3. Restore Backup</h4>
               </div>
               <p class="modal-help-text" style="font-size: 0.82rem; margin-bottom: 0.75rem;">
-                Load an existing <code>.json</code> or <code>.csv</code> multi-wallet backup from your Google Drive or computer.
+                Load an existing <code>.json</code>, <code>.barya</code> or <code>.csv</code> multi-wallet backup from your Google Drive or computer.
               </p>
               <label for="welcomeImportInput" class="btn btn-outline btn-block drive-upload-btn mb-2">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1607,7 +1353,7 @@
                   <line x1="12" y1="3" x2="12" y2="15"></line>
                 </svg>
                 <span>Select Backup File</span>
-                <input type="file" id="welcomeImportInput" accept=".json,.csv" style="display:none">
+                <input type="file" id="welcomeImportInput" accept=".json,.barya,.csv" style="display:none">
               </label>
               <button type="button" id="welcomeOpenDriveGuideBtn" class="btn btn-ghost btn-block btn-sm">
                 Google Drive Sync Guide &rarr;
@@ -1630,6 +1376,84 @@
             <span>📚 Tutorial & PH Financial Guide</span>
           </button>
           <button type="button" id="welcomeDoneBtn" class="btn btn-primary">Go to Ledger</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ACTIVE SAVED LEDGER OVERWRITE WARNING MODAL -->
+    <div id="overwriteWarningModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="overwriteWarningTitle">
+      <div class="modal-card modal-md">
+        <div class="modal-header" style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.05) 100%);">
+          <div class="modal-title-group">
+            <div class="modal-icon-badge text-danger" style="background-color: var(--debit-bg); font-size: 1.3rem;">
+              ⚠️
+            </div>
+            <div>
+              <h3 id="overwriteWarningTitle" class="modal-title">Active Saved Ledger Detected</h3>
+              <p class="modal-subtitle">Confirm before replacing your existing financial records</p>
+            </div>
+          </div>
+          <button id="closeOverwriteWarningBtn" class="btn-close">&times;</button>
+        </div>
+
+        <div class="modal-body">
+          <div class="overwrite-warning-box">
+            <div class="overwrite-warning-banner">
+              <span style="font-size: 1.25rem;">⚠️</span>
+              <p id="overwriteWarningMessage">
+                You currently have an active saved ledger. Proceeding will replace your existing transactions and wallet balances.
+              </p>
+            </div>
+
+            <!-- Active Ledger Summary Card -->
+            <div class="overwrite-current-ledger-card">
+              <div class="overwrite-card-header">
+                <span style="font-weight: 700; color: var(--text-primary);">Current Active Ledger to be Overwritten:</span>
+                <span id="overwriteCurrentSavedTime" class="font-mono modal-help-text">Last saved: Just now</span>
+              </div>
+              <div class="overwrite-metrics-grid font-mono">
+                <div class="overwrite-metric-item">
+                  <span class="metric-lbl">Ledger Name:</span>
+                  <strong id="overwriteCurrentName">Primary Ledger</strong>
+                </div>
+                <div class="overwrite-metric-item">
+                  <span class="metric-lbl">Net Balance:</span>
+                  <strong id="overwriteCurrentBalance" class="credit-text">₱0.00</strong>
+                </div>
+                <div class="overwrite-metric-item">
+                  <span class="metric-lbl">Wallets:</span>
+                  <strong id="overwriteCurrentWallets">1 Wallet</strong>
+                </div>
+                <div class="overwrite-metric-item">
+                  <span class="metric-lbl">Transactions:</span>
+                  <strong id="overwriteCurrentEntries">0 Entries</strong>
+                </div>
+              </div>
+            </div>
+
+            <div class="overwrite-recommendation-box">
+              <p>
+                💡 <strong>Safety Recommendation:</strong> Download a <code>.barya</code> backup file first so you can restore your current ledger anytime.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+          <button type="button" id="overwriteBackupFirstBtn" class="btn btn-outline btn-backup-safeguard" title="Export .barya backup file now">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span>Download Backup (.barya) First</span>
+          </button>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <button type="button" id="cancelOverwriteWarningBtn" class="btn btn-ghost">Cancel</button>
+            <button type="button" id="confirmOverwriteProceedBtn" class="btn btn-primary" style="background-color: var(--debit-color);">
+              <span>Proceed & Overwrite</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -2181,8 +2005,6 @@
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                   <polyline points="14 2 14 8 20 8"></polyline>
-                  <line x1="16" y1="13" x2="8" y2="13"></line>
-                  <line x1="16" y1="17" x2="8" y2="17"></line>
                 </svg>
                 <span>Download CSV File</span>
               </button>

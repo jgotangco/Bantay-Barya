@@ -566,7 +566,13 @@
     document.getElementById('exportSheetsBtn')?.addEventListener('click', () => copyForGoogleSheets());
     document.getElementById('exportJsonBtn')?.addEventListener('click', () => exportLedgerJson());
     document.getElementById('importJsonInput')?.addEventListener('change', handleFileImport);
-    document.getElementById('loadSampleDataBtn')?.addEventListener('click', () => loadSampleData());
+    document.getElementById('loadSampleDataBtn')?.addEventListener('click', () => {
+      if (window.BB_CORE?.hasActiveSavedLedger?.()) {
+        window.BB_CORE.openOverwriteWarningModal('load_sample', () => loadSampleData());
+      } else {
+        loadSampleData();
+      }
+    });
 
     document.getElementById('clearAllDataBtn')?.addEventListener('click', () => {
       if (confirm('Are you sure you want to reset all Bantay Barya records to 0 balance? This cannot be undone.')) {
@@ -713,77 +719,86 @@
     if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Bantay Barya Multi-Wallet JSON backup exported!', 'success');
   }
 
-  function handleFileImport(e) {
-    const file = e.target.files[0];
+  function handleFileImport(e, bypassConfirm = false) {
+    const file = e.target?.files?.[0] || e;
     if (!file) return;
 
-    if (file.name.endsWith('.barya')) {
-      if (window.BB_WALLETS) window.BB_WALLETS.importBaryaFile(file);
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const text = event.target.result;
-        if (file.name.endsWith('.json')) {
-          const parsed = JSON.parse(text);
-          if (parsed.transactions && Array.isArray(parsed.transactions)) {
-            state.transactions = parsed.transactions;
-            if (parsed.wallets && Array.isArray(parsed.wallets)) {
-              state.wallets = parsed.wallets;
-            } else if (!state.wallets || state.wallets.length === 0) {
-              state.wallets = [...DEFAULT_WALLETS];
-            }
-            if (parsed.debts && Array.isArray(parsed.debts)) state.debts = parsed.debts;
-            if (parsed.bills && Array.isArray(parsed.bills)) state.bills = parsed.bills;
-            if (parsed.settings) state.settings = parsed.settings;
-            if (parsed.categories && Array.isArray(parsed.categories)) state.categories = parsed.categories;
-            if (parsed.saveSlots && Array.isArray(parsed.saveSlots)) state.saveSlots = parsed.saveSlots;
-            if (parsed.activeSlotId) state.activeSlotId = parsed.activeSlotId;
-
-            state.transactions.forEach(t => {
-              if (!t.walletId) t.walletId = state.wallets[0]?.id || 'wallet_default';
-            });
-
-            if (window.BB_CORE) {
-              window.BB_CORE.updateCategoryDatalists();
-              window.BB_CORE.updateFxRateAndConversion();
-            }
-            if (window.BB_WALLETS) {
-              window.BB_WALLETS.populateWalletDropdowns();
-              window.BB_WALLETS.recalculateLedgerBalances();
-            }
-            if (window.BB_BILLS) {
-              window.BB_BILLS.checkBillDueNotifications();
-              window.BB_BILLS.renderBillsTable();
-            }
-            const baseSelect = document.getElementById('baseCurrencySelect');
-            const txSelect = document.getElementById('txCurrencySelect');
-            const nameInput = document.getElementById('settingsUserNameInput');
-
-            if (baseSelect) baseSelect.value = state.settings.baseCurrency || 'PHP';
-            if (txSelect) txSelect.value = state.settings.baseCurrency || 'PHP';
-            if (nameInput) nameInput.value = state.settings.userName || '';
-            if (window.BB_THEME) window.BB_THEME.updateTimeGreeting();
-
-            if (window.BB_CORE?.showToast) window.BB_CORE.showToast(`Restored ${parsed.transactions.length} transactions across ${state.wallets.length} wallets!`, 'success');
-          } else {
-            if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Invalid JSON ledger backup format.', 'error');
-          }
-        }
-      } catch (err) {
-        if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Error importing backup file: ' + err.message, 'error');
+    const executeImport = () => {
+      if (file.name.endsWith('.barya')) {
+        if (window.BB_WALLETS) window.BB_WALLETS.importBaryaFile(file);
+        return;
       }
 
-      const input = document.getElementById('importJsonInput');
-      if (input) input.value = '';
-      const driveInput = document.getElementById('loadFromDriveInput');
-      if (driveInput) driveInput.value = '';
-      const welcomeInput = document.getElementById('welcomeImportInput');
-      if (welcomeInput) welcomeInput.value = '';
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const text = event.target.result;
+          if (file.name.endsWith('.json')) {
+            const parsed = JSON.parse(text);
+            if (parsed.transactions && Array.isArray(parsed.transactions)) {
+              state.transactions = parsed.transactions;
+              if (parsed.wallets && Array.isArray(parsed.wallets)) {
+                state.wallets = parsed.wallets;
+              } else if (!state.wallets || state.wallets.length === 0) {
+                state.wallets = [...DEFAULT_WALLETS];
+              }
+              if (parsed.debts && Array.isArray(parsed.debts)) state.debts = parsed.debts;
+              if (parsed.bills && Array.isArray(parsed.bills)) state.bills = parsed.bills;
+              if (parsed.settings) state.settings = parsed.settings;
+              if (parsed.categories && Array.isArray(parsed.categories)) state.categories = parsed.categories;
+              if (parsed.saveSlots && Array.isArray(parsed.saveSlots)) state.saveSlots = parsed.saveSlots;
+              if (parsed.activeSlotId) state.activeSlotId = parsed.activeSlotId;
+
+              state.transactions.forEach(t => {
+                if (!t.walletId) t.walletId = state.wallets[0]?.id || 'wallet_default';
+              });
+
+              if (window.BB_CORE) {
+                window.BB_CORE.updateCategoryDatalists();
+                window.BB_CORE.updateFxRateAndConversion();
+                window.BB_CORE.saveData();
+              }
+              if (window.BB_WALLETS) {
+                window.BB_WALLETS.populateWalletDropdowns();
+                window.BB_WALLETS.recalculateLedgerBalances();
+              }
+              if (window.BB_BILLS) {
+                window.BB_BILLS.checkBillDueNotifications();
+                window.BB_BILLS.renderBillsTable();
+              }
+              const baseSelect = document.getElementById('baseCurrencySelect');
+              const txSelect = document.getElementById('txCurrencySelect');
+              const nameInput = document.getElementById('settingsUserNameInput');
+
+              if (baseSelect) baseSelect.value = state.settings.baseCurrency || 'PHP';
+              if (txSelect) txSelect.value = state.settings.baseCurrency || 'PHP';
+              if (nameInput) nameInput.value = state.settings.userName || '';
+              if (window.BB_THEME) window.BB_THEME.updateTimeGreeting();
+
+              if (window.BB_CORE?.showToast) window.BB_CORE.showToast(`Restored ${parsed.transactions.length} transactions across ${state.wallets.length} wallets!`, 'success');
+            } else {
+              if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Invalid JSON ledger backup format.', 'error');
+            }
+          }
+        } catch (err) {
+          if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Error importing backup file: ' + err.message, 'error');
+        }
+
+        const input = document.getElementById('importJsonInput');
+        if (input) input.value = '';
+        const driveInput = document.getElementById('loadFromDriveInput');
+        if (driveInput) driveInput.value = '';
+        const welcomeInput = document.getElementById('welcomeImportInput');
+        if (welcomeInput) welcomeInput.value = '';
+      };
+      reader.readAsText(file);
     };
-    reader.readAsText(file);
+
+    if (!bypassConfirm && window.BB_CORE?.hasActiveSavedLedger?.()) {
+      window.BB_CORE.openOverwriteWarningModal('restore_backup', executeImport);
+    } else {
+      executeImport();
+    }
   }
 
   function loadSampleData() {

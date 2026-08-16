@@ -2075,6 +2075,87 @@ body {
   color: var(--debit-color);
 }
 
+.badge-tag.tag-transfer {
+  background-color: rgba(99, 102, 241, 0.15);
+  color: #6366f1;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.badge-tag.tag-archived {
+  background-color: rgba(148, 163, 184, 0.18);
+  color: #64748b;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+/* Inter-Wallet Transfer Styles */
+.btn-transfer-header {
+  border-color: rgba(99, 102, 241, 0.35);
+  color: #6366f1;
+}
+
+.btn-transfer-header:hover {
+  background-color: rgba(99, 102, 241, 0.1);
+  border-color: #6366f1;
+  color: #4f46e5;
+}
+
+.transfer-wallets-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.transfer-balance-subtext {
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+  margin-top: 0.3rem;
+  font-weight: 500;
+}
+
+/* Delete Safeguard Radio Cards */
+.resolution-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-top: 0.35rem;
+}
+
+.radio-card-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.75rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-surface-subtle);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.radio-card-option:hover {
+  border-color: var(--accent-primary);
+  background-color: var(--bg-hover);
+}
+
+.radio-card-option input[type="radio"] {
+  margin-top: 0.2rem;
+  cursor: pointer;
+}
+
+.radio-card-content strong {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  margin-bottom: 0.15rem;
+}
+
+.radio-card-content p {
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+  line-height: 1.35;
+  margin: 0;
+}
+
 .row-actions {
   display: flex;
   align-items: center;
@@ -3904,6 +3985,7 @@ body {
 .guide-card-icon {
   font-size: 1.35rem;
   line-height: 1;
+  flex-shrink: 0;
 }
 
 .guide-card-icon-title h5 {

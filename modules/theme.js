@@ -65,13 +65,13 @@
     }
 
     const themeIcons = {
-      auto_date: '🗓️', sunflower: '🌻', snow: '❄️', sakura: '🌸', pumpkin: '🎃',
+      deep_teal: '💎', auto_date: '🗓️', sunflower: '🌻', snow: '❄️', sakura: '🌸', pumpkin: '🎃',
       winter: '❄️', spring: '🌸', summer: '🌻', fall: '🎃', light: '☀️', dark: '🌙', system: '🌓'
     };
 
     const iconEl = document.getElementById('settingsThemeIcon');
     if (iconEl) {
-      iconEl.textContent = themeIcons[themeMode] || '🎨';
+      iconEl.textContent = themeIcons[themeMode] || '💎';
     }
 
     renderAllHeroCharts();
@@ -81,7 +81,7 @@
   }
 
   function initThemeEngine() {
-    let savedTheme = localStorage.getItem(STORAGE_KEY_THEME) || localStorage.getItem(LEGACY_KEY_THEME_V6) || 'auto_date';
+    let savedTheme = localStorage.getItem(STORAGE_KEY_THEME) || localStorage.getItem(LEGACY_KEY_THEME_V6) || 'deep_teal';
     savedTheme = normalizeThemeName(savedTheme);
     state.theme = savedTheme;
     const themeSelect = document.getElementById('settingsThemeSelect');
@@ -98,7 +98,7 @@
         if (window.BB_CORE?.saveData) window.BB_CORE.saveData();
 
         const cleanThemeLabels = {
-          sunflower: 'Sunflower 🌻', snow: 'Snow ❄️', sakura: 'Sakura 🌸', pumpkin: 'Pumpkin 🎃',
+          deep_teal: 'Deep Teal / Fintech 💎', sunflower: 'Sunflower 🌻', snow: 'Snow ❄️', sakura: 'Sakura 🌸', pumpkin: 'Pumpkin 🎃',
           light: 'Light ☀️', dark: 'Dark 🌙', auto_date: 'Auto (Date) 🗓️', system: 'System 🌓'
         };
         if (window.BB_CORE?.showToast) {
@@ -495,9 +495,9 @@
     }
 
     const activeTheme = document.documentElement.getAttribute('data-theme');
-    const isDark = activeTheme !== 'light' && activeTheme !== 'sakura' && activeTheme !== 'sunflower';
-    const textColor = isDark ? '#f8fafc' : '#0f172a';
-    const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
+    const isLight = activeTheme === 'light' || activeTheme === 'sakura' || activeTheme === 'sunflower';
+    const textColor = isLight ? '#0a3640' : '#b8d4cc';
+    const gridColor = isLight ? 'rgba(10,54,64,0.06)' : 'rgba(123, 227, 168, 0.12)';
     const target30Data = finalValues.map(() => 30);
 
     const ctx = canvas.getContext('2d');
@@ -509,19 +509,19 @@
           {
             label: 'Spending Buffer (Days)',
             data: finalValues,
-            borderColor: '#8b5cf6',
-            backgroundColor: 'rgba(139, 92, 246, 0.15)',
+            borderColor: '#7be3a8',
+            backgroundColor: 'rgba(123, 227, 168, 0.18)',
             borderWidth: 2.5,
             tension: 0.35,
             fill: true,
-            pointBackgroundColor: '#8b5cf6',
+            pointBackgroundColor: '#7be3a8',
             pointRadius: 3.5,
             pointHoverRadius: 5.5
           },
           {
             label: '30-Day Healthy Target',
             data: target30Data,
-            borderColor: 'rgba(16, 185, 129, 0.75)',
+            borderColor: '#38bdf8',
             borderWidth: 1.5,
             borderDash: [5, 5],
             pointRadius: 0,
@@ -630,9 +630,9 @@
     const outflowData = months.map(m => m.outflow);
 
     const activeTheme = document.documentElement.getAttribute('data-theme');
-    const isDark = activeTheme !== 'light' && activeTheme !== 'sakura' && activeTheme !== 'sunflower';
-    const textColor = isDark ? '#f8fafc' : '#0f172a';
-    const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
+    const isLight = activeTheme === 'light' || activeTheme === 'sakura' || activeTheme === 'sunflower';
+    const textColor = isLight ? '#0a3640' : '#b8d4cc';
+    const gridColor = isLight ? 'rgba(10,54,64,0.06)' : 'rgba(123, 227, 168, 0.12)';
     const baseSymbol = CURRENCIES[state.settings.baseCurrency]?.symbol || '₱';
 
     const ctx = canvas.getContext('2d');
@@ -644,14 +644,14 @@
           {
             label: 'Inflows (+)',
             data: inflowData,
-            backgroundColor: '#10b981',
+            backgroundColor: '#7be3a8',
             borderRadius: 4,
             borderSkipped: false
           },
           {
             label: 'Outflows (-)',
             data: outflowData,
-            backgroundColor: '#f43f5e',
+            backgroundColor: '#ff7b92',
             borderRadius: 4,
             borderSkipped: false
           }
@@ -778,9 +778,9 @@
     const netWorthData = months.map(m => m.netWorth);
 
     const activeTheme = document.documentElement.getAttribute('data-theme');
-    const isDark = activeTheme !== 'light' && activeTheme !== 'sakura' && activeTheme !== 'sunflower';
-    const textColor = isDark ? '#f8fafc' : '#0f172a';
-    const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
+    const isLight = activeTheme === 'light' || activeTheme === 'sakura' || activeTheme === 'sunflower';
+    const textColor = isLight ? '#0a3640' : '#b8d4cc';
+    const gridColor = isLight ? 'rgba(10,54,64,0.06)' : 'rgba(123, 227, 168, 0.12)';
 
     const ctx = canvas.getContext('2d');
     heroAssetsLiabilitiesChart = new Chart(ctx, {
@@ -791,21 +791,21 @@
           {
             label: 'Total Assets (A)',
             data: assetsData,
-            backgroundColor: '#10b981',
+            backgroundColor: '#7be3a8',
             borderRadius: 4,
             borderSkipped: false
           },
           {
             label: 'Total Liabilities (L)',
             data: liabilitiesData,
-            backgroundColor: '#f43f5e',
+            backgroundColor: '#ff7b92',
             borderRadius: 4,
             borderSkipped: false
           },
           {
             label: 'Real Net Worth (E)',
             data: netWorthData,
-            backgroundColor: '#3b82f6',
+            backgroundColor: '#38bdf8',
             borderRadius: 4,
             borderSkipped: false
           }

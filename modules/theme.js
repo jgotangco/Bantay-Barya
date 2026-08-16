@@ -312,7 +312,7 @@
     const txList = state.transactions;
 
     const monthExpenses = txList.filter(tx => {
-      if ((parseFloat(tx.debit) || 0) <= 0) return false;
+      if ((parseFloat(tx.debit) || 0) <= 0 || tx.isTransfer || tx.type === 'transfer_out' || tx.isArchived) return false;
       if (!tx.date) return false;
       const d = new Date(tx.date);
       return d.getFullYear() === currentYear && d.getMonth() === currentMonth;
@@ -442,6 +442,9 @@
     let lastInflowBatchDate = null;
 
     sortedChronological.forEach((tx, idx) => {
+      if (tx.isArchived) return;
+      if (tx.isTransfer || tx.type === 'transfer_out' || tx.type === 'transfer_in') return;
+
       const credit = parseFloat(tx.credit) || 0;
       const debit = parseFloat(tx.debit) || 0;
       const txDateObj = new Date(tx.date + 'T00:00:00');
@@ -596,7 +599,7 @@
     const txList = state.transactions;
 
     txList.forEach(tx => {
-      if (!tx.date) return;
+      if (!tx.date || tx.isArchived || tx.isTransfer || tx.type === 'transfer_out' || tx.type === 'transfer_in') return;
       const txDate = new Date(tx.date);
       const y = txDate.getFullYear();
       const m = txDate.getMonth();

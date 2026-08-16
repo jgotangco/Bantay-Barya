@@ -492,12 +492,13 @@
     const walletsSecSub = document.getElementById('walletsSectionSubtitle');
 
     if (state.selectedWalletId !== 'all') {
-      targetTx = targetTx.filter(t => t.walletId === state.selectedWalletId);
+      targetTx = targetTx.filter(t => t.walletId === state.selectedWalletId && !t.isArchived);
       const w = window.BB_WALLETS ? window.BB_WALLETS.getWallet(state.selectedWalletId) : null;
       initialBal = w ? (parseFloat(w.initialBalance) || 0) : 0;
       if (balKpiLabel) balKpiLabel.textContent = `${w?.name || 'Wallet'} Balance`;
       if (walletsSecSub) walletsSecSub.textContent = `Filtered to: ${w?.icon || '👛'} ${w?.name || 'Wallet'}`;
     } else {
+      targetTx = targetTx.filter(t => !t.isArchived);
       initialBal = state.wallets.reduce((acc, w) => acc + (parseFloat(w.initialBalance) || 0), 0);
       if (balKpiLabel) balKpiLabel.textContent = `Total Net Balance (${state.wallets.length} Wallets)`;
       if (walletsSecSub) walletsSecSub.textContent = `Click any wallet chip to filter view (${state.wallets.length} active wallets)`;
@@ -509,6 +510,11 @@
     let debitCount = 0;
 
     targetTx.forEach((tx) => {
+      // If viewing all wallets, transfers between own accounts are internal movements, not external income or expense
+      if (state.selectedWalletId === 'all' && (tx.isTransfer || tx.type === 'transfer_out' || tx.type === 'transfer_in')) {
+        return;
+      }
+
       const cr = parseFloat(tx.credit) || 0;
       const db = parseFloat(tx.debit) || 0;
       if (cr > 0) {
@@ -576,6 +582,12 @@
   function getFilteredTransactions() {
     let list = [...state.transactions];
 
+    if (state.typeFilter === 'archived') {
+      list = list.filter(tx => tx.isArchived);
+    } else {
+      list = list.filter(tx => !tx.isArchived);
+    }
+
     if (state.selectedWalletId !== 'all') {
       list = list.filter(tx => tx.walletId === state.selectedWalletId);
     }
@@ -594,9 +606,11 @@
     }
 
     if (state.typeFilter === 'credit') {
-      list = list.filter(tx => (parseFloat(tx.credit) || 0) > 0);
+      list = list.filter(tx => (parseFloat(tx.credit) || 0) > 0 && !tx.isTransfer);
     } else if (state.typeFilter === 'debit') {
-      list = list.filter(tx => (parseFloat(tx.debit) || 0) > 0);
+      list = list.filter(tx => (parseFloat(tx.debit) || 0) > 0 && !tx.isTransfer);
+    } else if (state.typeFilter === 'transfer') {
+      list = list.filter(tx => tx.isTransfer || tx.type === 'transfer_out' || tx.type === 'transfer_in');
     }
 
     if (state.dateFilter !== 'all') {
@@ -663,8 +677,8 @@
   function renderLedgerTable() {
     const filtered = getFilteredTransactions();
     const totalCount = state.selectedWalletId === 'all'
-      ? state.transactions.length
-      : state.transactions.filter(t => t.walletId === state.selectedWalletId).length;
+      ? state.transactions.filter(t => !t.isArchived).length
+      : state.transactions.filter(t => t.walletId === state.selectedWalletId && !t.isArchived).length;
 
     const countBadge = document.getElementById('ledgerCountBadge');
     const tableBody = document.getElementById('ledgerTableBody');
@@ -691,13 +705,21 @@
         : (parseFloat(tx.walletRunningBalance) || 0);
 
       const isCredit = credit > 0;
-      const tagClass = isCredit ? 'tag-credit' : 'tag-debit';
-      const tagLabel = isCredit ? 'Credit' : 'Debit';
+      let tagClass = isCredit ? 'tag-credit' : 'tag-debit';
+      let tagLabel = isCredit ? 'Credit' : 'Debit';
+
+      if (tx.isArchived) {
+        tagClass = 'tag-archived';
+        tagLabel = '📦 Archived';
+      } else if (tx.isTransfer || tx.type === 'transfer_out' || tx.type === 'transfer_in') {
+        tagClass = 'tag-transfer';
+        tagLabel = tx.type === 'transfer_in' ? '⇄ Transfer In' : '⇄ Transfer Out';
+      }
 
       const walletObj = window.BB_WALLETS ? window.BB_WALLETS.getWallet(tx.walletId) : null;
       const walletBadge = walletObj
         ? `<span class="wallet-badge-pill" title="Wallet: ${escapeHtml(walletObj.name)}">${walletObj.icon} ${escapeHtml(walletObj.name)}</span>`
-        : `<span class="wallet-badge-pill">👛 Main</span>`;
+        : (tx.archivedWalletName ? `<span class="wallet-badge-pill" title="Archived Wallet">📦 ${escapeHtml(tx.archivedWalletName)}</span>` : `<span class="wallet-badge-pill">👛 Main</span>`);
 
       let fxSubtext = '';
       if (tx.inputCurrency && tx.inputCurrency !== baseCurr && tx.inputAmount) {
@@ -707,7 +729,7 @@
       }
 
       html += `
-        <tr data-id="${tx.id}">
+        <tr data-id="${tx.id}" class="${tx.isArchived ? 'archived-row' : ''}">
           <td class="td-date font-mono">${escapeHtml(tx.date)}</td>
           <td class="td-wallet">${walletBadge}</td>
           <td class="td-item">

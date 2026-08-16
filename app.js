@@ -29,10 +29,12 @@
     STORAGE_KEY_CATEGORIES,
     STORAGE_KEY_DONT_SHOW_WELCOME,
     STORAGE_KEY_FX_CACHE,
+    STORAGE_KEY_LAST_SAVED,
     LEGACY_KEY_TRANSACTIONS_V6,
     LEGACY_KEY_SETTINGS_V6,
     LEGACY_KEY_CATEGORIES_V6,
     getRelativeDateString,
+    formatDateTime,
     formatCurrency,
     formatForeignCurrency,
     escapeHtml
@@ -42,6 +44,7 @@
   let lastSavedTimestamp = Date.now();
   let autoSaveTimer = null;
   let relativeTimeTimer = null;
+  let pendingOverwriteCallback = null;
 
   function showToast(message, type = 'info') {
     const container = document.getElementById('toastContainer');
@@ -923,46 +926,27 @@
     });
 
     document.getElementById('settingsStartFreshBtn')?.addEventListener('click', () => {
-      if (confirm('Start fresh with a clean multi-wallet ledger? All transactions, scheduled bills, and debts will be cleared and wallet balances reset to ₱0.00.')) {
-        state.transactions = [];
-        state.bills = [];
-        state.debts = [];
-        state.wallets = [
-          {
-            id: 'wallet_default',
-            name: 'Personal Spending',
-            type: 'spending',
-            currency: state.settings.baseCurrency || 'PHP',
-            icon: '👛',
-            initialBalance: 0.00,
-            createdAt: Date.now()
-          }
-        ];
-        state.selectedWalletId = 'all';
-        saveData();
-        if (window.BB_WALLETS) {
-          window.BB_WALLETS.syncActiveSlotPayload();
-          window.BB_WALLETS.populateWalletDropdowns();
-          window.BB_WALLETS.renderWalletsBar();
-          window.BB_WALLETS.recalculateLedgerBalances();
-          window.BB_WALLETS.updateActiveSlotBadge();
-          window.BB_WALLETS.renderSaveSlotsGrid();
-        }
-        if (window.BB_BILLS) {
-          window.BB_BILLS.checkBillDueNotifications();
-          window.BB_BILLS.renderBillsTable();
-        }
-        if (window.BB_DEBTS) {
-          window.BB_DEBTS.renderDebtsTable();
-        }
+      const reset = () => {
         closeModal();
-        showToast('Ledger reset! You are starting fresh with 0 balance, 0 bills, and 0 entries.', 'info');
+        executeFreshStart('', 'PHP', 0);
+      };
+      if (hasActiveSavedLedger()) {
+        openOverwriteWarningModal('start_fresh', reset);
+      } else {
+        reset();
       }
     });
 
     document.getElementById('settingsLoadSampleBtn')?.addEventListener('click', () => {
-      if (window.BB_REPORTS) window.BB_REPORTS.loadSampleData();
-      closeModal();
+      const loadSample = () => {
+        if (window.BB_REPORTS) window.BB_REPORTS.loadSampleData();
+        closeModal();
+      };
+      if (hasActiveSavedLedger()) {
+        openOverwriteWarningModal('load_sample', loadSample);
+      } else {
+        loadSample();
+      }
     });
 
     document.getElementById('settingsOpenDriveModalBtn')?.addEventListener('click', () => {
@@ -1190,14 +1174,258 @@
     }
   }
 
+  function hasActiveSavedLedger() {
+    const hasTx = Boolean(state.transactions && state.transactions.length > 0);
+    const hasWalletsWithBalance = Boolean(state.wallets && state.wallets.some(w => {
+      const init = Math.abs(parseFloat(w.initialBalance) || 0);
+      const curr = Math.abs(parseFloat(w.currentBalance) || 0);
+      return init > 0.001 || curr > 0.001;
+    }));
+    const hasMultipleWallets = Boolean(state.wallets && state.wallets.length > 1);
+    const hasDebts = Boolean(state.debts && state.debts.length > 0);
+    const hasBills = Boolean(state.bills && state.bills.length > 0);
+    const hasMultipleSlots = Boolean(state.saveSlots && state.saveSlots.length > 1);
+
+    return Boolean(hasTx || hasWalletsWithBalance || hasMultipleWallets || hasDebts || hasBills || hasMultipleSlots);
+  }
+
+  function getLastSavedLedgerSummary() {
+    const activeSlot = (state.saveSlots && state.saveSlots.find(s => s.id === state.activeSlotId)) || state.saveSlots?.[0];
+    const name = activeSlot?.name || 'Primary Ledger';
+    const icon = activeSlot?.icon || '🌟';
+    const desc = activeSlot?.description || 'Main continuous multi-wallet personal finance ledger';
+    const baseCurr = state.settings?.baseCurrency || 'PHP';
+
+    let totalBal = 0;
+    if (window.BB_WALLETS) {
+      totalBal = window.BB_WALLETS.getTotalCombinedBalance();
+    } else if (state.wallets && state.wallets.length > 0) {
+      state.wallets.forEach(w => {
+        const bal = w.currentBalance !== undefined ? (parseFloat(w.currentBalance) || 0) : (parseFloat(w.initialBalance) || 0);
+        totalBal += bal;
+      });
+    }
+
+    const walletCount = state.wallets ? state.wallets.length : 0;
+    const txCount = state.transactions ? state.transactions.length : 0;
+    const hasData = hasActiveSavedLedger();
+    const savedTime = lastSavedTimestamp || activeSlot?.updatedAt || Date.now();
+
+    return {
+      name,
+      icon,
+      desc,
+      baseCurrency: baseCurr,
+      totalBalance: totalBal,
+      walletCount,
+      txCount,
+      hasData,
+      lastSaved: savedTime
+    };
+  }
+
+  function getRelativeTimeString(ts) {
+    const now = Date.now();
+    const diffSec = Math.max(0, Math.floor((now - ts) / 1000));
+    if (diffSec < 15) return 'Saved just now';
+    if (diffSec < 60) return `Saved ${diffSec}s ago`;
+    if (diffSec < 3600) return `Saved ${Math.floor(diffSec / 60)}m ago`;
+    if (diffSec < 86400) return `Saved ${Math.floor(diffSec / 3600)}h ago`;
+    return `Saved on ${new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+  }
+
+  function updateWelcomeSavedLedgerDisplay() {
+    const summary = getLastSavedLedgerSummary();
+    const pill = document.getElementById('welcomeSavedStatusPill');
+    const pillText = document.getElementById('welcomeSavedStatusText');
+    const timeDisplay = document.getElementById('welcomeSavedTimeDisplay');
+    const iconEl = document.getElementById('welcomeSavedIcon');
+    const nameEl = document.getElementById('welcomeSavedName');
+    const descEl = document.getElementById('welcomeSavedDesc');
+    const balanceEl = document.getElementById('welcomeSavedBalance');
+    const walletsCountEl = document.getElementById('welcomeSavedWalletsCount');
+    const txCountEl = document.getElementById('welcomeSavedTxCount');
+    const loadBtn = document.getElementById('welcomeLoadSavedBtn');
+
+    if (iconEl) iconEl.textContent = summary.icon;
+    if (nameEl) nameEl.textContent = summary.name;
+    if (descEl) descEl.textContent = summary.desc;
+
+    if (summary.hasData) {
+      if (pill) pill.className = 'welcome-saved-pill';
+      if (pillText) pillText.textContent = 'Active Saved Ledger';
+      if (timeDisplay) timeDisplay.textContent = `Last saved: ${getRelativeTimeString(summary.lastSaved)} (${formatDateTime(summary.lastSaved)})`;
+      if (balanceEl) balanceEl.textContent = formatCurrency(summary.totalBalance, summary.baseCurrency);
+      if (walletsCountEl) walletsCountEl.textContent = `${summary.walletCount} ${summary.walletCount === 1 ? 'Wallet' : 'Wallets'}`;
+      if (txCountEl) txCountEl.textContent = `${summary.txCount} ${summary.txCount === 1 ? 'Entry' : 'Entries'}`;
+      if (loadBtn) {
+        loadBtn.innerHTML = `<span>▶️ Load Latest Saved Ledger (${formatCurrency(summary.totalBalance, summary.baseCurrency)})</span>`;
+      }
+    } else {
+      if (pill) pill.className = 'welcome-saved-pill empty';
+      if (pillText) pillText.textContent = 'No Saved Ledger Data Yet';
+      if (timeDisplay) timeDisplay.textContent = 'No prior saved ledger found';
+      if (balanceEl) balanceEl.textContent = formatCurrency(0, summary.baseCurrency);
+      if (walletsCountEl) walletsCountEl.textContent = '1 Wallet';
+      if (txCountEl) txCountEl.textContent = '0 Entries';
+      if (loadBtn) {
+        loadBtn.innerHTML = `<span>▶️ Open Empty Ledger</span>`;
+      }
+    }
+  }
+
+  function openOverwriteWarningModal(actionName, onConfirmCallback) {
+    const modal = document.getElementById('overwriteWarningModal');
+    if (!modal) {
+      if (onConfirmCallback) onConfirmCallback();
+      return;
+    }
+
+    const summary = getLastSavedLedgerSummary();
+    const msgEl = document.getElementById('overwriteWarningMessage');
+    const timeEl = document.getElementById('overwriteCurrentSavedTime');
+    const nameEl = document.getElementById('overwriteCurrentName');
+    const balEl = document.getElementById('overwriteCurrentBalance');
+    const walletsEl = document.getElementById('overwriteCurrentWallets');
+    const entriesEl = document.getElementById('overwriteCurrentEntries');
+    const confirmBtn = document.getElementById('confirmOverwriteProceedBtn');
+
+    if (msgEl) {
+      let actionDesc = 'proceed with this action';
+      if (actionName === 'start_fresh') actionDesc = 'start a fresh clean ledger';
+      else if (actionName === 'load_sample') actionDesc = 'load sample demo data';
+      else if (actionName === 'restore_backup') actionDesc = 'restore a backup file';
+      msgEl.innerHTML = `You have an <strong>active saved ledger</strong> with <strong>${summary.txCount} transactions</strong> across <strong>${summary.walletCount} wallets</strong> (Total: <strong>${formatCurrency(summary.totalBalance, summary.baseCurrency)}</strong>). If you ${actionDesc}, your existing ledger will be overwritten and replaced.`;
+    }
+
+    if (timeEl) timeEl.textContent = `Last saved: ${getRelativeTimeString(summary.lastSaved)} (${formatDateTime(summary.lastSaved)})`;
+    if (nameEl) nameEl.textContent = summary.name;
+    if (balEl) balEl.textContent = formatCurrency(summary.totalBalance, summary.baseCurrency);
+    if (walletsEl) walletsEl.textContent = `${summary.walletCount} ${summary.walletCount === 1 ? 'Wallet' : 'Wallets'}`;
+    if (entriesEl) entriesEl.textContent = `${summary.txCount} ${summary.txCount === 1 ? 'Entry' : 'Entries'}`;
+
+    if (confirmBtn) {
+      let btnLabel = 'Proceed & Overwrite';
+      if (actionName === 'start_fresh') btnLabel = '⚠️ Reset & Start Fresh';
+      else if (actionName === 'load_sample') btnLabel = '⚠️ Overwrite & Load Demo';
+      else if (actionName === 'restore_backup') btnLabel = '⚠️ Overwrite & Restore Backup';
+      confirmBtn.innerHTML = `<span>${btnLabel}</span>`;
+    }
+
+    pendingOverwriteCallback = onConfirmCallback;
+    modal.classList.add('active');
+  }
+
+  function setupOverwriteWarningListeners() {
+    const modal = document.getElementById('overwriteWarningModal');
+    const closeBtn = document.getElementById('closeOverwriteWarningBtn');
+    const cancelBtn = document.getElementById('cancelOverwriteWarningBtn');
+    const confirmBtn = document.getElementById('confirmOverwriteProceedBtn');
+    const backupFirstBtn = document.getElementById('overwriteBackupFirstBtn');
+
+    const closeWarning = () => {
+      pendingOverwriteCallback = null;
+      modal?.classList.remove('active');
+    };
+
+    closeBtn?.addEventListener('click', closeWarning);
+    cancelBtn?.addEventListener('click', closeWarning);
+    modal?.addEventListener('click', (e) => {
+      if (e.target === modal) closeWarning();
+    });
+
+    backupFirstBtn?.addEventListener('click', () => {
+      if (window.BB_WALLETS) {
+        window.BB_WALLETS.exportActiveSaveSlotAsBarya();
+      } else if (window.BB_REPORTS) {
+        window.BB_REPORTS.exportLedgerJson();
+      }
+      showToast('Downloaded .barya backup file! Your data is safe.', 'success');
+    });
+
+    confirmBtn?.addEventListener('click', () => {
+      const cb = pendingOverwriteCallback;
+      closeWarning();
+      if (typeof cb === 'function') {
+        cb();
+      }
+    });
+  }
+
+  function executeFreshStart(name, newCurr, newBal) {
+    const welcomeModal = document.getElementById('welcomeModal');
+    state.settings.userName = name;
+    state.settings.baseCurrency = newCurr;
+
+    state.transactions = [];
+    state.bills = [];
+    state.debts = [];
+
+    state.wallets = [
+      {
+        id: 'wallet_default',
+        name: 'Personal Spending',
+        type: 'spending',
+        currency: newCurr,
+        icon: '👛',
+        initialBalance: newBal,
+        createdAt: Date.now()
+      }
+    ];
+
+    state.selectedWalletId = 'all';
+
+    const baseSelect = document.getElementById('baseCurrencySelect');
+    const txSelect = document.getElementById('txCurrencySelect');
+    const nameInput = document.getElementById('settingsUserNameInput');
+
+    if (baseSelect) baseSelect.value = newCurr;
+    if (txSelect) txSelect.value = newCurr;
+    if (nameInput) nameInput.value = name;
+
+    saveWelcomePreference();
+    saveData();
+    if (window.BB_WALLETS) {
+      window.BB_WALLETS.syncActiveSlotPayload();
+      window.BB_WALLETS.populateWalletDropdowns();
+      window.BB_WALLETS.renderWalletsBar();
+      window.BB_WALLETS.recalculateLedgerBalances();
+      window.BB_WALLETS.updateActiveSlotBadge();
+      window.BB_WALLETS.renderSaveSlotsGrid();
+    }
+    if (window.BB_THEME) window.BB_THEME.updateTimeGreeting();
+    if (window.BB_BILLS) {
+      window.BB_BILLS.checkBillDueNotifications();
+      window.BB_BILLS.renderBillsTable();
+    }
+    if (window.BB_DEBTS) {
+      window.BB_DEBTS.renderDebtsTable();
+    }
+    welcomeModal?.classList.remove('active');
+    showToast(`Welcome ${name ? name : 'to Bantay Barya'}! Initialized clean multi-wallet with ${formatCurrency(newBal)}.`, 'success');
+  }
+
   function initWelcomeModal() {
     const welcomeModal = document.getElementById('welcomeModal');
     const dontShow = localStorage.getItem(STORAGE_KEY_DONT_SHOW_WELCOME) === 'true';
+
+    updateWelcomeSavedLedgerDisplay();
 
     document.getElementById('welcomeCurrencySelect')?.addEventListener('change', (e) => {
       const sym = CURRENCIES[e.target.value]?.symbol || '₱';
       const pfx = document.getElementById('welcomePrefix');
       if (pfx) pfx.textContent = sym;
+    });
+
+    document.getElementById('welcomeLoadSavedBtn')?.addEventListener('click', () => {
+      const summary = getLastSavedLedgerSummary();
+      saveWelcomePreference();
+      welcomeModal?.classList.remove('active');
+      if (summary.hasData) {
+        showToast(`Loaded latest saved ledger: ${summary.name} (Total: ${formatCurrency(summary.totalBalance, summary.baseCurrency)})`, 'success');
+      } else {
+        showToast('Opened ledger. Start by recording a transaction or creating a wallet!', 'info');
+      }
     });
 
     document.getElementById('welcomeFreshForm')?.addEventListener('submit', (e) => {
@@ -1206,67 +1434,42 @@
       const newCurr = document.getElementById('welcomeCurrencySelect')?.value || 'PHP';
       const newBal = parseFloat(document.getElementById('welcomeInitialBalance')?.value) || 0;
 
-      state.settings.userName = name;
-      state.settings.baseCurrency = newCurr;
-
-      state.transactions = [];
-      state.bills = [];
-      state.debts = [];
-
-      state.wallets = [
-        {
-          id: 'wallet_default',
-          name: 'Personal Spending',
-          type: 'spending',
-          currency: newCurr,
-          icon: '👛',
-          initialBalance: newBal,
-          createdAt: Date.now()
-        }
-      ];
-
-      state.selectedWalletId = 'all';
-
-      const baseSelect = document.getElementById('baseCurrencySelect');
-      const txSelect = document.getElementById('txCurrencySelect');
-      const nameInput = document.getElementById('settingsUserNameInput');
-
-      if (baseSelect) baseSelect.value = newCurr;
-      if (txSelect) txSelect.value = newCurr;
-      if (nameInput) nameInput.value = name;
-
-      saveWelcomePreference();
-      saveData();
-      if (window.BB_WALLETS) {
-        window.BB_WALLETS.syncActiveSlotPayload();
-        window.BB_WALLETS.populateWalletDropdowns();
-        window.BB_WALLETS.renderWalletsBar();
-        window.BB_WALLETS.recalculateLedgerBalances();
-        window.BB_WALLETS.updateActiveSlotBadge();
-        window.BB_WALLETS.renderSaveSlotsGrid();
+      if (hasActiveSavedLedger()) {
+        openOverwriteWarningModal('start_fresh', () => executeFreshStart(name, newCurr, newBal));
+      } else {
+        executeFreshStart(name, newCurr, newBal);
       }
-      if (window.BB_THEME) window.BB_THEME.updateTimeGreeting();
-      if (window.BB_BILLS) {
-        window.BB_BILLS.checkBillDueNotifications();
-        window.BB_BILLS.renderBillsTable();
-      }
-      if (window.BB_DEBTS) {
-        window.BB_DEBTS.renderDebtsTable();
-      }
-      welcomeModal?.classList.remove('active');
-      showToast(`Welcome ${name ? name : 'to Bantay Barya'}! Initialized clean multi-wallet with ${formatCurrency(newBal)}.`, 'success');
     });
 
     document.getElementById('welcomeLoadSampleBtn')?.addEventListener('click', () => {
-      if (window.BB_REPORTS) window.BB_REPORTS.loadSampleData();
-      saveWelcomePreference();
-      welcomeModal?.classList.remove('active');
+      const loadSample = () => {
+        if (window.BB_REPORTS) window.BB_REPORTS.loadSampleData();
+        saveWelcomePreference();
+        welcomeModal?.classList.remove('active');
+      };
+
+      if (hasActiveSavedLedger()) {
+        openOverwriteWarningModal('load_sample', loadSample);
+      } else {
+        loadSample();
+      }
     });
 
     document.getElementById('welcomeImportInput')?.addEventListener('change', (e) => {
-      if (window.BB_REPORTS) window.BB_REPORTS.handleFileImport(e);
-      saveWelcomePreference();
-      welcomeModal?.classList.remove('active');
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const doImport = () => {
+        if (window.BB_REPORTS) window.BB_REPORTS.handleFileImport({ target: { files: [file] } }, true);
+        saveWelcomePreference();
+        welcomeModal?.classList.remove('active');
+      };
+
+      if (hasActiveSavedLedger()) {
+        openOverwriteWarningModal('restore_backup', doImport);
+      } else {
+        doImport();
+      }
     });
 
     document.getElementById('welcomeOpenDriveGuideBtn')?.addEventListener('click', () => {
@@ -1286,12 +1489,23 @@
     });
 
     document.getElementById('emptyLoadSampleBtn')?.addEventListener('click', () => {
-      if (window.BB_REPORTS) window.BB_REPORTS.loadSampleData();
+      if (hasActiveSavedLedger()) {
+        openOverwriteWarningModal('load_sample', () => {
+          if (window.BB_REPORTS) window.BB_REPORTS.loadSampleData();
+        });
+      } else {
+        if (window.BB_REPORTS) window.BB_REPORTS.loadSampleData();
+      }
     });
-    document.getElementById('emptyLoadBackupBtn')?.addEventListener('click', () => welcomeModal?.classList.add('active'));
+
+    document.getElementById('emptyLoadBackupBtn')?.addEventListener('click', () => {
+      updateWelcomeSavedLedgerDisplay();
+      welcomeModal?.classList.add('active');
+    });
     document.getElementById('emptySetBalanceBtn')?.addEventListener('click', () => document.getElementById('walletsModal')?.classList.add('active'));
 
     if (!dontShow && welcomeModal) {
+      updateWelcomeSavedLedgerDisplay();
       welcomeModal.classList.add('active');
     }
   }
@@ -1353,7 +1567,12 @@
     autoSaveTimer = setInterval(() => triggerAutoSave(true), 5 * 60 * 1000);
 
     if (relativeTimeTimer) clearInterval(relativeTimeTimer);
-    relativeTimeTimer = setInterval(updateLastSavedDisplay, 10000);
+    relativeTimeTimer = setInterval(() => {
+      updateLastSavedDisplay();
+      if (document.getElementById('welcomeModal')?.classList.contains('active')) {
+        updateWelcomeSavedLedgerDisplay();
+      }
+    }, 10000);
 
     document.getElementById('headerAutoSaveBtn')?.addEventListener('click', () => triggerAutoSave(false));
     document.getElementById('settingsSaveNowBtn')?.addEventListener('click', () => triggerAutoSave(false));
@@ -1372,7 +1591,9 @@
     localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(state.settings));
     localStorage.setItem(STORAGE_KEY_CATEGORIES, JSON.stringify(state.categories));
     lastSavedTimestamp = Date.now();
+    localStorage.setItem(STORAGE_KEY_LAST_SAVED, lastSavedTimestamp.toString());
     updateLastSavedDisplay();
+    updateWelcomeSavedLedgerDisplay();
   }
 
   function loadData() {
@@ -1385,6 +1606,11 @@
       const savedTx = localStorage.getItem(STORAGE_KEY_TRANSACTIONS) || localStorage.getItem(LEGACY_KEY_TRANSACTIONS_V6);
       const savedSet = localStorage.getItem(STORAGE_KEY_SETTINGS) || localStorage.getItem(LEGACY_KEY_SETTINGS_V6);
       const savedCats = localStorage.getItem(STORAGE_KEY_CATEGORIES) || localStorage.getItem(LEGACY_KEY_CATEGORIES_V6);
+      const savedLastTime = localStorage.getItem(STORAGE_KEY_LAST_SAVED);
+
+      if (savedLastTime) {
+        lastSavedTimestamp = parseInt(savedLastTime, 10) || Date.now();
+      }
 
       if (savedSet) {
         state.settings = JSON.parse(savedSet);
@@ -1556,6 +1782,7 @@
       window.BB_BILLS.renderBillsTable();
     }
     setupMobileNavListeners();
+    setupOverwriteWarningListeners();
     initWelcomeModal();
     updateFxRateAndConversion();
     if (window.BB_WALLETS) window.BB_WALLETS.recalculateLedgerBalances();
@@ -1570,7 +1797,11 @@
     updateProjectedBalance,
     updateFxRateAndConversion,
     saveData,
-    loadData
+    loadData,
+    hasActiveSavedLedger,
+    getLastSavedLedgerSummary,
+    updateWelcomeSavedLedgerDisplay,
+    openOverwriteWarningModal
   };
 
   window.app = {

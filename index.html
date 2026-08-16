@@ -105,6 +105,12 @@
           <span class="btn-text">Wallets</span>
         </button>
 
+        <!-- Inter-Wallet Transfer Funds Trigger -->
+        <button id="openTransferModalBtn" class="btn btn-outline btn-transfer-header" title="Transfer Funds Between Wallets (Zero Expense)">
+          <span style="font-size: 1.05rem; line-height: 1;">⇄</span>
+          <span class="btn-text">Transfer</span>
+        </button>
+
         <!-- Reconcile Balance Button with Two Hands Shaking (🤝 Handshake) -->
         <button id="openReconcileModalBtn" class="btn btn-outline btn-reconcile" title="Reconcile Wallet Ledger with Actual Statement Balance">
           <span class="handshake-icon-span">🤝</span>
@@ -300,6 +306,10 @@
             </div>
           </div>
           <div class="wallets-bar-actions">
+            <button type="button" id="quickTransferBarBtn" class="btn btn-sm btn-outline" title="Transfer Funds Between Wallets">
+              <span style="font-size: 1rem; line-height: 1;">⇄</span>
+              <span>Transfer</span>
+            </button>
             <button type="button" id="quickAddWalletBtn" class="btn btn-sm btn-primary" title="Create New Wallet">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -599,6 +609,8 @@
               <option value="all">All Types</option>
               <option value="credit">Credits Only (+)</option>
               <option value="debit">Debits Only (-)</option>
+              <option value="transfer">Transfers Only (⇄)</option>
+              <option value="archived">Archived History (📦)</option>
             </select>
 
             <select id="dateRangeFilterSelect" class="form-select-sm" title="Filter by Date Period">
@@ -937,9 +949,110 @@
       </div>
     </div>
 
-    <!-- DELETE WALLET & REASSIGN BALANCE/ENTRIES MODAL -->
+    <!-- INTER-WALLET TRANSFER FUNDS MODAL -->
+    <div id="transferModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="transferModalTitle">
+      <div class="modal-card modal-md">
+        <div class="modal-header">
+          <div class="modal-title-group">
+            <div class="modal-icon-badge" style="background-color: var(--credit-bg); color: var(--credit-color); font-size: 1.3rem;">
+              ⇄
+            </div>
+            <div>
+              <h3 id="transferModalTitle" class="modal-title">Transfer Funds Between Wallets</h3>
+              <p class="modal-subtitle">Internal movement between wallets (zero expense/income)</p>
+            </div>
+          </div>
+          <button id="closeTransferModalBtn" class="btn-close">&times;</button>
+        </div>
+
+        <form id="transferFundsForm" class="transfer-funds-form">
+          <div class="modal-body">
+            <div class="transfer-wallets-grid">
+              <!-- Source Wallet -->
+              <div class="form-group span-2">
+                <label for="transferSourceWalletSelect" class="form-label">
+                  <span>From (Source Wallet)</span>
+                  <span class="required-star">*</span>
+                </label>
+                <select id="transferSourceWalletSelect" class="form-input" required>
+                  <!-- Populated dynamically -->
+                </select>
+                <div class="transfer-balance-subtext font-mono" id="transferSourceBalanceHint">Available: ₱0.00</div>
+              </div>
+
+              <!-- Destination Wallet -->
+              <div class="form-group span-2">
+                <label for="transferTargetWalletSelect" class="form-label">
+                  <span>To (Destination Wallet)</span>
+                  <span class="required-star">*</span>
+                </label>
+                <select id="transferTargetWalletSelect" class="form-input" required>
+                  <!-- Populated dynamically -->
+                </select>
+                <div class="transfer-balance-subtext font-mono" id="transferTargetBalanceHint">Current: ₱0.00</div>
+              </div>
+            </div>
+
+            <div class="form-grid" style="margin-top: 0.75rem;">
+              <!-- Amount and Source Currency -->
+              <div class="form-group span-2">
+                <label for="transferAmount" class="form-label">
+                  <span>Transfer Amount</span>
+                  <span class="required-star">*</span>
+                </label>
+                <div class="input-prefix-wrapper">
+                  <span class="input-prefix" id="transferAmountPrefix">₱</span>
+                  <input type="number" id="transferAmount" class="form-input font-mono" step="any" min="0.01" placeholder="0.00" required>
+                </div>
+              </div>
+
+              <!-- Date -->
+              <div class="form-group span-2">
+                <label for="transferDate" class="form-label">
+                  <span>Transfer Date</span>
+                  <span class="required-star">*</span>
+                </label>
+                <input type="date" id="transferDate" class="form-input calendar-input" required>
+              </div>
+
+              <!-- FX Conversion Notice (if multi-currency) -->
+              <div class="form-group span-full" id="transferFxNotice" style="display: none;">
+                <div class="fx-rate-box">
+                  <div class="fx-rate-info">
+                    <span class="fx-live-indicator">
+                      <span class="fx-pulse-dot"></span>
+                      <span id="transferFxRateText">Exchange Rate: 1 USD = 58.50 PHP</span>
+                    </span>
+                    <span class="fx-converted-text">
+                      Destination Receives: <strong id="transferConvertedDisplay" class="font-mono">₱0.00</strong>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Notes -->
+              <div class="form-group span-full">
+                <label for="transferNotes" class="form-label">
+                  <span>Notes / Reason (Optional)</span>
+                </label>
+                <input type="text" id="transferNotes" class="form-input" placeholder="e.g. Bank to e-wallet cash-in, savings allocation...">
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" id="cancelTransferModalBtn" class="btn btn-ghost">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="submitTransferBtn">
+              <span>Execute Transfer</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- DELETE WALLET & REASSIGN / ARCHIVE MODAL -->
     <div id="deleteWalletModal" class="modal-backdrop" role="dialog" aria-modal="true">
-      <div class="modal-card modal-sm">
+      <div class="modal-card modal-md">
         <div class="modal-header">
           <div class="modal-title-group">
             <div class="modal-icon-badge text-danger" style="background-color: var(--debit-bg);">
@@ -950,8 +1063,8 @@
               </svg>
             </div>
             <div>
-              <h3 class="modal-title">Delete Wallet & Reassign</h3>
-              <p class="modal-subtitle">Transfer transactions & remaining balance</p>
+              <h3 class="modal-title">Delete Wallet & Balance Transfer</h3>
+              <p class="modal-subtitle">Safely transfer remaining balances and handle transaction history</p>
             </div>
           </div>
           <button id="closeDeleteWalletModalBtn" class="btn-close">&times;</button>
@@ -959,25 +1072,53 @@
         <form id="deleteWalletForm">
           <input type="hidden" id="deleteSourceWalletId">
           <div class="modal-body">
-            <div class="reassign-alert-banner">
-              <p>You are deleting wallet <strong id="deleteSourceWalletName" class="debit-text"></strong> with <strong id="deleteSourceTxCount">0</strong> transactions and a balance of <strong id="deleteSourceBalance" class="font-mono">₱0.00</strong>.</p>
-              <p style="margin-top: 0.45rem; font-size: 0.82rem; color: var(--text-secondary);">Please select a destination wallet where all associated transactions and remaining balances will be moved:</p>
+            <!-- Balance & Count Banner -->
+            <div class="reassign-alert-banner" id="deleteWalletAlertBanner">
+              <p>You are closing wallet <strong id="deleteSourceWalletName" class="debit-text"></strong> with <strong id="deleteSourceTxCount">0</strong> transactions and an active balance of <strong id="deleteSourceBalance" class="font-mono">₱0.00</strong>.</p>
+              <div id="deleteWalletBalanceRuleNotice" style="margin-top: 0.5rem; font-size: 0.82rem; color: var(--debit-color); font-weight: 600;">
+                ⚠️ A wallet cannot be deleted while there is still a balance. The remaining balance must be transferred to another wallet.
+              </div>
             </div>
 
-            <div class="form-group" style="margin-top: 0.85rem;">
+            <!-- Mandatory Destination Wallet for Balance -->
+            <div class="form-group" style="margin-top: 0.85rem;" id="deleteTargetWalletGroup">
               <label for="deleteTargetWalletSelect" class="form-label">
-                <span>Transfer all entries & balance to:</span>
+                <span>Transfer remaining balance to destination wallet:</span>
                 <span class="required-star">*</span>
               </label>
               <select id="deleteTargetWalletSelect" class="form-input" required>
                 <!-- Populated dynamically with remaining wallets -->
               </select>
             </div>
+
+            <!-- Historical Transactions Resolution -->
+            <div class="form-group" style="margin-top: 1rem;">
+              <label class="form-label">
+                <span>Historical Transactions Handling:</span>
+                <span class="required-star">*</span>
+              </label>
+              <div class="resolution-radio-group">
+                <label class="radio-card-option">
+                  <input type="radio" name="deleteTxResolution" value="reassign" checked id="deleteResolutionReassign">
+                  <div class="radio-card-content">
+                    <strong>Reassign to Destination Wallet</strong>
+                    <p>Move all past transactions into the destination wallet ledger.</p>
+                  </div>
+                </label>
+                <label class="radio-card-option">
+                  <input type="radio" name="deleteTxResolution" value="archive" id="deleteResolutionArchive">
+                  <div class="radio-card-content">
+                    <strong>Archive Historical Transactions</strong>
+                    <p>Transfer balance out via a closing transfer, then preserve past entries as historical archives.</p>
+                  </div>
+                </label>
+              </div>
+            </div>
           </div>
           <div class="modal-footer">
             <button type="button" id="cancelDeleteWalletBtn" class="btn btn-ghost">Cancel</button>
-            <button type="submit" class="btn btn-primary" style="background-color: var(--debit-color);">
-              Transfer & Delete Wallet
+            <button type="submit" class="btn btn-primary" style="background-color: var(--debit-color);" id="confirmDeleteWalletSubmitBtn">
+              Transfer Balance & Delete Wallet
             </button>
           </div>
         </form>
@@ -3726,6 +3867,12 @@
     </nav>
   </div>
 
+  <script src="modules/data.js"></script>
+  <script src="modules/theme.js"></script>
+  <script src="modules/wallets.js"></script>
+  <script src="modules/debts.js"></script>
+  <script src="modules/bills.js"></script>
+  <script src="modules/reports.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

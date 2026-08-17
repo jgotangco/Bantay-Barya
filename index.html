@@ -950,9 +950,9 @@
             </div>
             <span class="changelog-date">August 2026</span>
           </div>
-          <h4 class="changelog-release-title">Deep Teal / Fintech Visual Direction & User Manual</h4>
+          <h4 class="changelog-release-title">Deep Teal / Fintech Visual Direction & PDF User Manual</h4>
           <ul class="changelog-list">
-            <li><strong>Complete User Manual Documentation:</strong> Added full user manual in <code>USER_MANUAL.md</code> and in-app downloadable document (.md and .html) from the Guide modal and Settings.</li>
+            <li><strong>Complete PDF User Manual:</strong> Full offline user manual document in <code>USER_MANUAL.pdf</code> downloadable from the Guide modal and Settings.</li>
             <li><strong>Saturated Deep Teal / Fintech Design:</strong> Implemented rich dark petrol surfaces (<code>#07343e</code> / <code>#052a33</code>), luminous electric mint accents (<code>#7be3a8</code>), and rose coral outflows (<code>#ff7b92</code>).</li>
             <li><strong>Typography Upgrade:</strong> Integrated <em>Inter Tight</em> structured fintech font and <em>JetBrains Mono</em> for tabular financial precision.</li>
             <li><strong>Interactive Chart Palettes:</strong> Upgraded Chart.js Spending Buffer, Inflow/Outflow Cash Flow, and Assets vs Liabilities charts to match the new saturated fintech aesthetic.</li>
@@ -1264,18 +1264,15 @@
             <span style="font-size: 2.2rem; line-height: 1;">📥</span>
             <div style="flex: 1;">
               <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
-                <h4 style="margin: 0; color: var(--accent-primary);">Complete User Manual Documentation</h4>
-                <span class="version-pill" style="font-size: 0.72rem;">Release v2.9.0 Documentation</span>
+                <h4 style="margin: 0; color: var(--accent-primary);">Complete User Manual (PDF)</h4>
+                <span class="version-pill" style="font-size: 0.72rem;">Release v2.9.0 PDF Documentation</span>
               </div>
               <p style="margin-top: 0.35rem;">
-                Download the full offline user manual covering all features, accounting formulas, multi-wallet workflows, and Philippine financial strategies.
+                Download the formatted offline PDF user manual covering all features, accounting formulas, multi-wallet workflows, and Philippine financial strategies.
               </p>
               <div style="display: flex; gap: 0.65rem; margin-top: 0.75rem; flex-wrap: wrap;">
-                <button type="button" id="downloadUserManualMdBtn" class="btn btn-primary btn-sm" style="box-shadow: 0 2px 8px rgba(123, 227, 168, 0.3);">
-                  <span>📥 Download Markdown (.md)</span>
-                </button>
-                <button type="button" id="downloadUserManualHtmlBtn" class="btn btn-outline btn-sm">
-                  <span>📄 Download Offline HTML (.html)</span>
+                <button type="button" id="downloadUserManualPdfBtn" class="btn btn-primary btn-sm" style="box-shadow: 0 2px 8px rgba(123, 227, 168, 0.3);">
+                  <span>📥 Download User Manual (PDF)</span>
                 </button>
               </div>
             </div>
@@ -1336,14 +1333,14 @@
             </div>
           </div>
         </div>
-      </div>
 
-      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
-        <button type="button" id="guideFooterDownloadManualBtn" class="btn btn-outline btn-sm" title="Download Complete User Manual Markdown Document">
-          <span style="font-size: 1rem;">📥</span>
-          <span>Download User Manual (.md)</span>
-        </button>
-        <button id="closeGuideModalFooterBtn" class="btn btn-primary btn-sm">Got It, Let's Manage Finances!</button>
+        <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+          <button type="button" id="guideFooterDownloadManualBtn" class="btn btn-outline btn-sm" title="Download Complete User Manual (PDF)">
+            <span style="font-size: 1rem;">📥</span>
+            <span>Download User Manual (PDF)</span>
+          </button>
+          <button id="closeGuideModalFooterBtn" class="btn btn-primary btn-sm">Got It, Let's Manage Finances!</button>
+        </div>
       </div>
     </div>
   </div>

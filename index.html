@@ -127,12 +127,12 @@
           <span id="billsDuePillBadge" class="kpi-badge badge-negative" style="display: none; margin-left: 2px;">0</span>
         </button>
 
-        <button id="openGuideModalBtn" class="btn btn-outline btn-sm" title="View Philippines Personal Finance Guide & Tutorial">
+        <button id="openGuideModalBtn" class="btn btn-outline btn-sm" title="View Philippines Personal Finance Guide, Tutorial & User Manual">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
             <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
           </svg>
-          <span class="btn-text">Guide & Tutorial</span>
+          <span class="btn-text">Guide & Docs</span>
         </button>
 
         <button id="openInstallModalBtn" class="btn btn-outline btn-sm" title="Install App & Desktop / Extension Instructions">
@@ -950,8 +950,9 @@
             </div>
             <span class="changelog-date">August 2026</span>
           </div>
-          <h4 class="changelog-release-title">Deep Teal / Fintech Visual Direction & unslop.site Attribution</h4>
+          <h4 class="changelog-release-title">Deep Teal / Fintech Visual Direction & User Manual</h4>
           <ul class="changelog-list">
+            <li><strong>Complete User Manual Documentation:</strong> Added full user manual in <code>USER_MANUAL.md</code> and in-app downloadable document (.md and .html) from the Guide modal and Settings.</li>
             <li><strong>Saturated Deep Teal / Fintech Design:</strong> Implemented rich dark petrol surfaces (<code>#07343e</code> / <code>#052a33</code>), luminous electric mint accents (<code>#7be3a8</code>), and rose coral outflows (<code>#ff7b92</code>).</li>
             <li><strong>Typography Upgrade:</strong> Integrated <em>Inter Tight</em> structured fintech font and <em>JetBrains Mono</em> for tabular financial precision.</li>
             <li><strong>Interactive Chart Palettes:</strong> Upgraded Chart.js Spending Buffer, Inflow/Outflow Cash Flow, and Assets vs Liabilities charts to match the new saturated fintech aesthetic.</li>
@@ -965,6 +966,390 @@
       </div>
     </div>
   </div>
+
+  <!-- APP TUTORIAL, DOCUMENTATION & PHILIPPINE FINANCIAL LITERACY MODAL -->
+  <div id="guideModal" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-card modal-lg">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-icon-badge" style="background-color: rgba(16, 185, 129, 0.15); color: var(--credit-color);">
+            <span style="font-size: 1.3rem;">📚</span>
+          </div>
+          <div>
+            <h2 id="guideModalTitle" class="modal-title">Bantay Barya Guide & Financial Literacy Hub</h2>
+            <p class="modal-subtitle">Tutorials, documentation, user manual, and the importance of maintaining a healthy financial position in the Philippines</p>
+          </div>
+        </div>
+        <button id="closeGuideModalBtn" class="btn-close" aria-label="Close guide modal">&times;</button>
+      </div>
+
+      <!-- Guide Tabs Navigation -->
+      <div class="report-tabs-nav">
+        <button type="button" id="guideTabBtnPhContext" class="report-tab-btn active">
+          <span style="font-size: 1rem;">🇵🇭</span>
+          <span>Why Financial Health Matters in PH</span>
+        </button>
+        <button type="button" id="guideTabBtnTutorial" class="report-tab-btn">
+          <span style="font-size: 1rem;">🚀</span>
+          <span>App Tutorial & Features Walkthrough</span>
+        </button>
+        <button type="button" id="guideTabBtnPractices" class="report-tab-btn">
+          <span style="font-size: 1rem;">💡</span>
+          <span>PH Financial Best Practices</span>
+        </button>
+        <button type="button" id="guideTabBtnManual" class="report-tab-btn">
+          <span style="font-size: 1rem;">📖</span>
+          <span>Complete User Manual & Docs</span>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <!-- TAB 1: WHY FINANCIAL HEALTH MATTERS IN THE PHILIPPINES -->
+        <div id="guideTabContentPhContext" class="guide-tab-content active">
+          <div class="guide-intro-banner">
+            <span style="font-size: 2.2rem; line-height: 1;">🇵🇭</span>
+            <div>
+              <h4>Navigating the Philippine Economic Reality</h4>
+              <p>
+                In the Philippines, personal financial literacy is not just about saving coins—it is a critical shield against life-altering emergencies. Understanding cash flows, debt structures, and Net Worth protects Filipino families and creates generational resilience.
+              </p>
+            </div>
+          </div>
+
+          <div class="guide-cards-grid">
+            <!-- 1. The Sandwich Generation -->
+            <div class="guide-detail-card">
+              <div class="guide-card-icon-title">
+                <span class="guide-card-icon">👨‍👩‍👧‍👦</span>
+                <h5>1. The "Sandwich Generation" Challenge</h5>
+              </div>
+              <p>
+                In Filipino culture (<em>utang na loob</em> and close family ties), working adults often financially support both their aging parents (who may lack pension or retirement savings) and their own growing children simultaneously.
+              </p>
+              <div class="guide-insight-box">
+                <strong>How Bantay Barya Helps:</strong> Multi-wallet tracking allows separating personal living costs from parental remittance wallets and child education funds to prevent silent budget leaks.
+              </div>
+            </div>
+
+            <!-- 2. Out-of-Pocket Healthcare & PhilHealth Gap -->
+            <div class="guide-detail-card">
+              <div class="guide-card-icon-title">
+                <span class="guide-card-icon">🏥</span>
+                <h5>2. Medical Emergencies & Out-of-Pocket Healthcare</h5>
+              </div>
+              <p>
+                A single major illness or ICU hospitalization in the Philippines can quickly cost ₱500,000 to ₱2,000,000+. Public healthcare and PhilHealth coverage have case-rate ceilings that leave large out-of-pocket bills, forcing families into debt.
+              </p>
+              <div class="guide-insight-box">
+                <strong>The Buffer Solution:</strong> The <strong>Spending Buffer</strong> metric tracks exactly how many days of cash runway you have, safeguarding your family against health emergencies.
+              </div>
+            </div>
+
+            <!-- 3. Inflation & Commodity Price Shocks -->
+            <div class="guide-detail-card">
+              <div class="guide-card-icon-title">
+                <span class="guide-card-icon">📈</span>
+                <h5>3. Inflation, Utility Rates & Purchasing Power</h5>
+              </div>
+              <p>
+                With volatility in food (rice, vegetables), fuel, and electricity rates (Meralco, provincial electric cooperatives), unmonitored spending causes rapid cash erosion.
+              </p>
+              <div class="guide-insight-box">
+                <strong>Continuous Monitoring:</strong> Real-time categorization and the <strong>Inflows vs Outflows Carousel</strong> ensure you see lifestyle creep and inflation impact instantly.
+              </div>
+            </div>
+
+            <!-- 4. Consumer Debt Trap & Effective Interest Rates -->
+            <div class="guide-detail-card">
+              <div class="guide-card-icon-title">
+                <span class="guide-card-icon">💳</span>
+                <h5>4. Escaping the High-Interest Consumer Debt Trap</h5>
+              </div>
+              <p>
+                Informal lending ("5-6" rates of 20% / month), predatory Online Lending Apps (OLAs), and revolving credit cards (BSP cap at <strong>3.0% / month</strong> or <strong>36.0% Effective Annual Rate</strong>) compound rapidly against borrowers.
+              </p>
+              <div class="guide-insight-box">
+                <strong>Debt Snowball Engine:</strong> Simulate paying down high-rate debts, roll over freed payments, and schedule 13th-month lump sum advance payments to slash interest.
+              </div>
+            </div>
+
+            <!-- 5. Real Net Worth vs Paycheck-to-Paycheck -->
+            <div class="guide-detail-card span-2">
+              <div class="guide-card-icon-title">
+                <span class="guide-card-icon">⚖️</span>
+                <h5>5. The Shift from "Isang Kahig, Isang Tuka" to Real Net Worth</h5>
+              </div>
+              <p>
+                High income alone does not equal wealth. If you earn ₱150,000 / mo but owe ₱2,000,000 in high-interest loans with zero savings, your financial position is fragile.
+              </p>
+              <p style="margin-top: 0.5rem;">
+                The <strong>Statement of Financial Position (Balance Sheet)</strong> in Bantay Barya enforces the fundamental equation:
+                <br>
+                <code style="font-size: 0.95rem; font-weight: 700; color: var(--accent-primary);">Real Net Worth = Total Assets (Cash, Savings, Checking) − Total Liabilities (Mortgages, Auto, Cards)</code>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 2: APP TUTORIAL & STEP-BY-STEP WALKTHROUGH -->
+        <div id="guideTabContentTutorial" class="guide-tab-content" style="display: none;">
+          <div class="tutorial-steps-container">
+            <!-- Step 1: Wallets -->
+            <div class="tutorial-step-row">
+              <div class="step-number-badge">1</div>
+              <div class="step-content">
+                <h5>👛 Set Up Your Multi-Wallet System</h5>
+                <p>
+                  Organize your money into distinct buckets instead of one confusing pool:
+                </p>
+                <ul class="guide-bullet-list">
+                  <li><strong>Personal Spending (👛)</strong>: Day-to-day food, commuting, groceries, and dining.</li>
+                  <li><strong>High-Yield Savings / Emergency Fund (🏦)</strong>: Digital banks (Maya, Seabank, GoTyme, Tonik, CIMB) generating interest.</li>
+                  <li><strong>Cash on Hand (💵)</strong>: Physical paper bills and coins in your pocket or envelope.</li>
+                  <li><strong>Checking / Current Account (🏛️)</strong>: For bill payments, post-dated checks (PDC), or mortgage auto-debits.</li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- Step 2: Logging & FX -->
+            <div class="tutorial-step-row">
+              <div class="step-number-badge">2</div>
+              <div class="step-content">
+                <h5>⚡ 2-Second Quick Transaction Logging & Multi-Currency FX</h5>
+                <p>
+                  Log debit expenses or income credits in 2 seconds. If you spend in USD, EUR, JPY, SGD, or AED (subscriptions, international travel, online shopping), select the currency and Bantay Barya automatically fetches live exchange rates and converts them to Philippine Pesos (₱).
+                </p>
+              </div>
+            </div>
+
+            <!-- Step 3: Reconcile -->
+            <div class="tutorial-step-row">
+              <div class="step-number-badge">3</div>
+              <div class="step-content">
+                <h5>🤝 Two Hands Shaking Balance Reconciliation</h5>
+                <p>
+                  Periodically match your app ledger with your actual bank statement or mobile banking app balance. Click <strong>🤝 Reconcile</strong>, input your actual statement balance, and the app automatically records a balancing adjustment entry.
+                </p>
+              </div>
+            </div>
+
+            <!-- Step 4: Spending Buffer -->
+            <div class="tutorial-step-row">
+              <div class="step-number-badge">4</div>
+              <div class="step-content">
+                <h5>🛡️ Monitor Your Spending Buffer (Financial Runway)</h5>
+                <p>
+                  The <strong>Spending Buffer</strong> metric (formerly Age of Money) calculates how many days you can survive on your existing cash reserves based on your average daily outflow rate:
+                </p>
+                <div class="guide-insight-box">
+                  <strong>Target:</strong> ≥ 30 Days (Green 🟢 = Healthy Cash Runway). If &lt; 30 Days (Red 🔴 = Living paycheck-to-paycheck; reduce discretionary debits).
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 5: Debts & Snowball -->
+            <div class="tutorial-step-row">
+              <div class="step-number-badge">5</div>
+              <div class="step-content">
+                <h5>💳 Track Liabilities & Simulate Debt Snowball Payoff</h5>
+                <p>
+                  Click <strong>💳 Debts</strong> to add loans with their <strong>Monthly Interest Rate (% / mo)</strong> or <strong>Effective Interest Rate (EIR % p.a.)</strong>:
+                </p>
+                <ul class="guide-bullet-list">
+                  <li><strong>Snowball Strategy (⛄)</strong>: Pay off smallest balances first for quick psychological momentum.</li>
+                  <li><strong>Avalanche Strategy (⚡)</strong>: Pay off highest EIR % rate loans first for mathematical maximum interest savings.</li>
+                  <li><strong>Advance Payment Simulation</strong>: Use the extra monthly payment slider or input a 13th-month bonus lump sum to see your accelerated Debt-Free Date!</li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- Step 6: Reports & Balance Sheet -->
+            <div class="tutorial-step-row">
+              <div class="step-number-badge">6</div>
+              <div class="step-content">
+                <h5>📊 Inspect Financial Reports & Statement of Financial Position</h5>
+                <p>
+                  Open <strong>Reports</strong> to view multi-color Expense Category Share breakdowns and your formal accounting <strong>Balance Sheet</strong> verifying that <code>Assets = Liabilities + Real Net Worth</code>. Both reports are fully printable.
+                </p>
+              </div>
+            </div>
+
+            <!-- Step 7: Save Vault & Extension -->
+            <div class="tutorial-step-row">
+              <div class="step-number-badge">7</div>
+              <div class="step-content">
+                <h5>💾 Save Vault (.barya) & Browser Extension</h5>
+                <p>
+                  Create multiple save slots (Personal, Business, Vacations, Simulations), take instant snapshots, export standalone <code>.barya</code> files, or install the <strong>Bantay Barya Chrome/Edge Extension</strong> to log purchases directly while browsing the web!
+                </p>
+              </div>
+            </div>
+
+            <!-- Step 8: Google Drive Setup & Execution -->
+            <div class="tutorial-step-row">
+              <div class="step-number-badge" style="background-color: #ea4335; color: #ffffff;">8</div>
+              <div class="step-content">
+                <h5>📁 How to Save and Run in Your Personal Google Drive</h5>
+                <p>
+                  Because Bantay Barya is a lightweight, zero-dependency web application, you can store and run it directly through your personal Google Drive with complete data privacy:
+                </p>
+                <ul class="guide-bullet-list" style="margin-top: 0.35rem;">
+                  <li><strong>Google Drive for Desktop (PC / Mac)</strong>: Copy the <code>expense-tracker</code> folder into your synced Google Drive (e.g. <code>G:\My Drive\Bantay-Barya\</code>). Double-click <code>index.html</code> to open it in your browser with full offline capability and automatic cloud file syncing.</li>
+                  <li><strong>Multi-Device Cloud Backup & Restore</strong>: In Settings (⚙️) or Save Vault (💾), click <strong>Save Backup File (To Drive)</strong> or export <code>.barya</code> files into Google Drive. On any other computer or mobile device, click <strong>Load Backup File (From Drive)</strong> to instantly restore your records.</li>
+                  <li><strong>Mobile Home Screen App (PWA)</strong>: When opened on your smartphone (Safari on iOS or Chrome on Android), tap <strong>Share / Menu</strong> ➔ <strong>"Add to Home Screen"</strong> for 1-tap app icon access.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: PHILIPPINE FINANCIAL BEST PRACTICES -->
+        <div id="guideTabContentPractices" class="guide-tab-content" style="display: none;">
+          <div class="guide-cards-grid">
+            <!-- Practice 1: Emergency Fund Rule -->
+            <div class="guide-detail-card">
+              <div class="guide-card-icon-title">
+                <span class="guide-card-icon">🏦</span>
+                <h5>1. The 3-to-6 Months Emergency Fund Rule</h5>
+              </div>
+              <p>
+                Keep 3 to 6 months of mandatory living expenses (rent, food, utilities, loan minimum payments) in liquid high-yield savings accounts (digital banks earning 4% - 6% p.a.). Do not invest this money in volatile stocks or lock it in illiquid real estate.
+              </p>
+            </div>
+
+            <!-- Practice 2: 13th Month Pay Allocation -->
+            <div class="guide-detail-card">
+              <div class="guide-card-icon-title">
+                <span class="guide-card-icon">🎁</span>
+                <h5>2. The Philippine 13th-Month Pay Strategy</h5>
+              </div>
+              <p>
+                Instead of spending 100% of year-end bonuses on holiday shopping, use the <strong>50 / 30 / 20 Rule</strong>:
+              </p>
+              <ul class="guide-bullet-list" style="margin-top: 0.35rem;">
+                <li><strong>50%</strong>: Debt Paydown / Lump Sum Advance on highest EIR loans.</li>
+                <li><strong>30%</strong>: Emergency Fund / High-Yield Savings build-up.</li>
+                <li><strong>20%</strong>: Holiday gifts, dining & family celebration.</li>
+              </ul>
+            </div>
+
+            <!-- Practice 3: Understanding EIR vs Flat Rates -->
+            <div class="guide-detail-card">
+              <div class="guide-card-icon-title">
+                <span class="guide-card-icon">🔍</span>
+                <h5>3. Effective Rate (EIR) vs. "Monthly Add-on" Trap</h5>
+              </div>
+              <p>
+                Lenders often advertise "Low 1% per month add-on rate!". However, because you pay interest on the full original principal even as you pay it down, the true <strong>Effective Interest Rate (EIR)</strong> is almost double (~21.5% - 24% p.a.). Always ask for the <em>Disclosure Statement</em> under R.A. 3765 (Truth in Lending Act).
+              </p>
+            </div>
+
+            <!-- Practice 4: Credit Card Discipline -->
+            <div class="guide-detail-card">
+              <div class="guide-card-icon-title">
+                <span class="guide-card-icon">🛡️</span>
+                <h5>4. Treat Credit Cards as Cash Substitutes</h5>
+              </div>
+              <p>
+                Never pay only the "Minimum Amount Due" on credit cards. At 3.0% per month (36% p.a.), revolving finance charges compound exponentially. Always pay the full statement balance every single month.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 4: COMPLETE USER MANUAL & DOCUMENTATION -->
+        <div id="guideTabContentManual" class="guide-tab-content" style="display: none;">
+          <!-- Download & Export Header Banner -->
+          <div class="guide-intro-banner" style="background: linear-gradient(135deg, rgba(123, 227, 168, 0.12) 0%, rgba(56, 189, 248, 0.08) 100%); border-color: var(--border-color);">
+            <span style="font-size: 2.2rem; line-height: 1;">📥</span>
+            <div style="flex: 1;">
+              <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+                <h4 style="margin: 0; color: var(--accent-primary);">Complete User Manual Documentation</h4>
+                <span class="version-pill" style="font-size: 0.72rem;">Release v2.9.0 Documentation</span>
+              </div>
+              <p style="margin-top: 0.35rem;">
+                Download the full offline user manual covering all features, accounting formulas, multi-wallet workflows, and Philippine financial strategies.
+              </p>
+              <div style="display: flex; gap: 0.65rem; margin-top: 0.75rem; flex-wrap: wrap;">
+                <button type="button" id="downloadUserManualMdBtn" class="btn btn-primary btn-sm" style="box-shadow: 0 2px 8px rgba(123, 227, 168, 0.3);">
+                  <span>📥 Download Markdown (.md)</span>
+                </button>
+                <button type="button" id="downloadUserManualHtmlBtn" class="btn btn-outline btn-sm">
+                  <span>📄 Download Offline HTML (.html)</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Interactive Chapters Overview -->
+          <div class="guide-cards-grid">
+            <!-- Chapter 1-3 -->
+            <div class="guide-detail-card">
+              <div class="guide-card-icon-title">
+                <span class="guide-card-icon">🚀</span>
+                <h5>1. Architecture & Onboarding</h5>
+              </div>
+              <ul class="guide-bullet-list">
+                <li><strong>Local-First Privacy</strong>: 100% client-side storage, zero cloud accounts required.</li>
+                <li><strong>Deep Teal Design</strong>: Saturated fintech surfaces, high-contrast typography.</li>
+                <li><strong>Startup Safeguards</strong>: Saved ledger detection & overwrite protection warnings.</li>
+              </ul>
+            </div>
+
+            <!-- Chapter 4-6 -->
+            <div class="guide-detail-card">
+              <div class="guide-card-icon-title">
+                <span class="guide-card-icon">👛</span>
+                <h5>2. Multi-Wallet & Transfers</h5>
+              </div>
+              <ul class="guide-bullet-list">
+                <li><strong>Zero-Expense Transfers</strong>: Inter-wallet transfers (<code>⇄</code>) without expense inflation.</li>
+                <li><strong>Safe Deletion</strong>: Balance reallocation before wallet removal.</li>
+                <li><strong>🤝 Reconciliation</strong>: 2-hands-shaking statement matching.</li>
+              </ul>
+            </div>
+
+            <!-- Chapter 7-9 -->
+            <div class="guide-detail-card">
+              <div class="guide-card-icon-title">
+                <span class="guide-card-icon">⏳</span>
+                <h5>3. Spending Buffer & Debts</h5>
+              </div>
+              <ul class="guide-bullet-list">
+                <li><strong>Spending Buffer (Rule 4)</strong>: Daily outflow runway tracking (30+ days target).</li>
+                <li><strong>Snowball & Avalanche</strong>: EIR % loan payoff optimization.</li>
+                <li><strong>13th-Month Acceleration</strong>: Lump-sum bonus simulation.</li>
+              </ul>
+            </div>
+
+            <!-- Chapter 10-15 -->
+            <div class="guide-detail-card">
+              <div class="guide-card-icon-title">
+                <span class="guide-card-icon">💾</span>
+                <h5>4. Balance Sheet & Save Vault</h5>
+              </div>
+              <ul class="guide-bullet-list">
+                <li><strong>Balance Sheet</strong>: Formal <code>Assets = Liabilities + Equity</code> statement.</li>
+                <li><strong>Save Vault (.barya)</strong>: Multi-budget profiles & portable encrypted exports.</li>
+                <li><strong>Security & PWA</strong>: 7-digit PIN lock & offline desktop app installation.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+        <button type="button" id="guideFooterDownloadManualBtn" class="btn btn-outline btn-sm" title="Download Complete User Manual Markdown Document">
+          <span style="font-size: 1rem;">📥</span>
+          <span>Download User Manual (.md)</span>
+        </button>
+        <button id="closeGuideModalFooterBtn" class="btn btn-primary btn-sm">Got It, Let's Manage Finances!</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
 
   <!-- Core Scripts -->
   <script src="modules/data.js"></script>

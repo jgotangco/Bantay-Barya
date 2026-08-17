@@ -446,145 +446,15 @@
     }
   }
 
-  const USER_MANUAL_MARKDOWN = `# 👛 Bantay Barya — Complete User Manual & Documentation
-*A Local-First, Multi-Wallet Continuous Income & Expense Tracker for Personal Financial Resilience*
-
----
-
-## 📑 Table of Contents
-1. Introduction & Core Philosophy
-2. Visual Direction & Design System (Deep Teal / Fintech)
-3. Quick Start & Onboarding (Welcome Dialog & Saved Ledger Detection)
-4. Multi-Wallet Architecture & Multi-Currency Engine
-5. Continuous Transaction Logging & Ledger Operations
-6. Balance Reconciliation Workflow (🤝 Two Hands Shaking)
-7. Spending Buffer Habit (Rule 4 Financial Runway)
-8. Debt Payoff & Snowball/Avalanche Engine
-9. Recurring Bills & Subscriptions Calendar
-10. Financial Reports & Statement of Financial Position (Balance Sheet)
-11. Save Vault & Multi-Profile Ledger System (.barya)
-12. Security, PIN Lock & Privacy
-13. PWA Installation & Browser Extension Integration
-14. Philippine Financial Context & Best Practices
-15. Keyboard Shortcuts, FAQ & Troubleshooting
-
----
-
-## 1. Introduction & Core Philosophy
-Bantay Barya (Filipino for "Coin Sentinel") is an offline-capable, local-first single-page web application designed to help individuals and families achieve permanent financial stability and net worth growth.
-- **100% Client-Side Privacy**: Data stored exclusively in browser localStorage.
-- **Zero Cloud Dependencies**: Operates offline without external tracking or required accounts.
-- **Continuous Cash Flow**: Balances and analytics update in real-time across all accounts.
-
----
-
-## 2. Visual Direction & Design System
-Utilizes the **Deep Teal / Fintech** saturated color palette (credited to unslop.site):
-- Canvas: #07343e | Surfaces: #052a33 / #083b47
-- Inflows / Accent: #7be3a8 (Electric Mint)
-- Outflows: #ff7b92 (Rose Coral)
-- High-contrast typography: Inter Tight & JetBrains Mono
-
----
-
-## 3. Quick Start & Onboarding
-- **Welcome Modal**: Automatically detects existing ledgers, displays balance, wallet count, transaction count, and relative saved timestamps.
-- **Safeguards**: Intercepts destructive actions (Start Fresh, Try Sample Data, Restore Backup) with a summary modal and a "Download Backup First (.barya)" action button.
-
----
-
-## 4. Multi-Wallet & Multi-Currency Engine
-- **Wallets**: Personal spending, digital high-yield banks (Maya 6%, SeaBank, GoTyme), checking (PDC), cash on hand, RTB treasury bonds, crypto, and stock portfolios.
-- **Zero-Expense Transfers**: Inter-wallet transfers (transfer_in & transfer_out) move funds between accounts without inflating expense statistics.
-- **Wallet Deletion Safeguard**: Requires transferring active balances and reallocates/archives transactions before deletion.
-- **Live Multi-Currency FX**: Real-time conversions for PHP, USD, EUR, JPY, GBP, SGD, AUD, CAD, HKD, CNY, KRW, THB, AED.
-
----
-
-## 5. Transaction Logging & Ledger Operations
-- **Quick Logging**: 2-second transaction entry with today/yesterday date chips and real-time resulting balance preview.
-- **Filtering & Search**: Search by text, notes, wallet, type (Debit, Credit, Transfer), or timeframe (This Month, Last Month, This Year).
-- **Multi-Column Sorting**: Sort by date, wallet, description, debit, credit, or running balance.
-
----
-
-## 6. Balance Reconciliation (🤝 Two Hands Shaking)
-Compare ledger balance against actual bank statement or cash count; auto-generates balancing adjustment records.
-
----
-
-## 7. Spending Buffer (Rule 4 Financial Runway)
-Measures how many days existing liquid reserves will last based on average daily expenses:
-- Target: ≥ 30 Days (🟢 Green) | 15–29 Days (🟡 Yellow) | < 15 Days (🔴 Red)
-
----
-
-## 8. Debt Payoff & Snowball/Avalanche Engine
-- **Snowball (⛄)**: Smallest balance first for psychological momentum.
-- **Avalanche (⚡)**: Highest Effective Interest Rate (EIR % p.a.) first for maximum interest savings.
-- **Simulation**: Test extra monthly payments and 13th-month bonus lump sums to accelerate your Debt-Free Date.
-
----
-
-## 9. Recurring Bills & Due Dates
-Track subscriptions and utilities, configure due date warning thresholds, and post 1-tap payments.
-
----
-
-## 10. Financial Reports & Balance Sheet
-- Expense category share visual charts (Doughnut, Pie, Bar).
-- Statement of Financial Position enforcing Assets = Liabilities + Real Net Worth.
-
----
-
-## 11. Save Vault (.barya) & Portable Archives
-Multiple budget slots (Personal, Business, What-If), instant snapshots, and portable encrypted .barya backup files.
-
----
-
-## 12. Security & PIN Lock
-7-digit PIN lockout with numeric keypad and physical key interception.
-
----
-
-## 13. PWA & Extension Integration
-Installable as a windowed desktop or mobile home screen app, with Chrome/Edge extension support for e-commerce purchases.
-
----
-
-## 14. Philippine Financial Context & Best Practices
-- 3-to-6 Months Emergency Fund in digital banks.
-- 13th-Month Pay 50/30/20 allocation (50% Debt, 30% Savings, 20% Holidays).
-- Truth in Lending Act EIR vs Flat add-on rates awareness.
-- 100% full statement credit card payments.
-
----
-*Bantay Barya • Built by Jerome Gotangco (jeromesg@google.com) with Google Antigravity. Visual direction credited to unslop.site.*`;
-
-  function downloadUserManual(format = 'md') {
-    if (format === 'html') {
-      const htmlContent = '<!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="UTF-8">\n  <title>Bantay Barya — Complete User Manual</title>\n  <style>\n    body { font-family: \'Inter Tight\', -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, sans-serif; line-height: 1.6; color: #ffffff; background: #07343e; max-width: 900px; margin: 0 auto; padding: 2.5rem 1.5rem; }\n    h1, h2, h3, h4 { color: #7be3a8; font-weight: 700; }\n    h1 { border-bottom: 2px solid rgba(123,227,168,0.3); padding-bottom: 0.5rem; }\n    h2 { border-bottom: 1px solid rgba(123,227,168,0.15); padding-bottom: 0.35rem; margin-top: 2rem; }\n    code { font-family: \'JetBrains Mono\', monospace; background: #052a33; border: 1px solid rgba(123,227,168,0.2); padding: 0.15rem 0.4rem; border-radius: 4px; color: #7be3a8; }\n    pre { background: #052a33; border: 1px solid rgba(123,227,168,0.2); padding: 1rem; border-radius: 8px; overflow-x: auto; color: #b8d4cc; white-space: pre-wrap; font-family: inherit; }\n    blockquote { border-left: 3px solid #7be3a8; margin: 1rem 0; padding-left: 1rem; color: #b8d4cc; }\n    a { color: #7be3a8; }\n    table { width: 100%; border-collapse: collapse; margin: 1rem 0; background: #052a33; }\n    th, td { border: 1px solid rgba(123,227,168,0.2); padding: 0.6rem 0.8rem; text-align: left; }\n    th { background: #0d4e5e; color: #7be3a8; }\n    hr { border: 0; border-top: 1px solid rgba(123,227,168,0.2); margin: 2rem 0; }\n    @media print { body { background: #fff; color: #000; } h1, h2, h3 { color: #004d40; } code, pre, table { background: #f5f5f5; color: #000; border-color: #ccc; } }\n  </style>\n</head>\n<body>\n  <pre>' + USER_MANUAL_MARKDOWN.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</pre>\n</body>\n</html>';
-      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'Bantay_Barya_User_Manual.html';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } else {
-      const blob = new Blob([USER_MANUAL_MARKDOWN], { type: 'text/markdown;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'Bantay_Barya_User_Manual.md';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    }
-    if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Downloaded User Manual (' + format.toUpperCase() + ') successfully!', 'success');
+  function downloadUserManual() {
+    const link = document.createElement('a');
+    link.href = 'USER_MANUAL.pdf';
+    link.download = 'Bantay_Barya_User_Manual.pdf';
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Downloaded Bantay Barya User Manual (PDF)!', 'success');
   }
 
   function openGuideModal(initialTab = 'ph_context') {
@@ -647,11 +517,10 @@ Installable as a windowed desktop or mobile home screen app, with Chrome/Edge ex
     document.getElementById('guideTabBtnPractices')?.addEventListener('click', () => switchGuideTab('practices'));
     document.getElementById('guideTabBtnManual')?.addEventListener('click', () => switchGuideTab('manual'));
 
-    // Manual Download triggers
-    document.getElementById('downloadUserManualMdBtn')?.addEventListener('click', () => downloadUserManual('md'));
-    document.getElementById('downloadUserManualHtmlBtn')?.addEventListener('click', () => downloadUserManual('html'));
-    document.getElementById('guideFooterDownloadManualBtn')?.addEventListener('click', () => downloadUserManual('md'));
-    document.getElementById('settingsDownloadManualBtn')?.addEventListener('click', () => downloadUserManual('md'));
+    // Manual PDF Download triggers
+    document.getElementById('downloadUserManualPdfBtn')?.addEventListener('click', () => downloadUserManual());
+    document.getElementById('guideFooterDownloadManualBtn')?.addEventListener('click', () => downloadUserManual());
+    document.getElementById('settingsDownloadManualBtn')?.addEventListener('click', () => downloadUserManual());
   }
 
   function setupExportImportListeners() {

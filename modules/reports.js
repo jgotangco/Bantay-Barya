@@ -657,6 +657,7 @@
   function exportLedgerJson(customFilename = null) {
     const exportData = {
       app: 'Bantay Barya',
+      author: 'Jerome Gotangco (https://github.com/jgotangco)',
       version: '2.9.0',
       exportedAt: new Date().toISOString(),
       baseCurrency: state.settings.baseCurrency || 'PHP',

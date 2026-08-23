@@ -34,4 +34,4 @@ A lightweight browser extension for **Bantay Barya** that allows you to quickly 
 
 ---
 
-Built with [Antigravity](https://antigravity.google/) by Jerome Gotangco (`jeromesg@google.com`).
+Built with [Antigravity](https://antigravity.google/) by Jerome Gotangco ([https://github.com/jgotangco](https://github.com/jgotangco)).

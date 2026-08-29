@@ -29,7 +29,7 @@
     CAD: { symbol: 'C$', name: 'Canadian Dollar', code: 'CAD', flag: '🇨🇦' },
     HKD: { symbol: 'HK$', name: 'Hong Kong Dollar', code: 'HKD', flag: '🇭🇰' },
     CNY: { symbol: '¥', name: 'Chinese Yuan', code: 'CNY', flag: '🇨🇳' },
-    KRW: { symbol: '₩', name: 'South Korean Won', code: 'KRW', flag: '🇰🇷' },
+    KRW: { symbol: '₩', name: 'South Korean Won', code: 'KRW', flag: 'KRW' },
     THB: { symbol: '฿', name: 'Thai Baht', code: 'THB', flag: '🇹🇭' },
     AED: { symbol: 'د.إ', name: 'UAE Dirham', code: 'AED', flag: '🇦🇪' }
   };
@@ -66,7 +66,7 @@
       apr: 6.75,
       minPayment: 16500.00,
       dueDate: 'Every 15th',
-      notes: '20-year fixed rate mortgage (0.5625%/mo diminishing, 6.75% EIR p.a.)',
+      notes: '20-year fixed rate mortgage (0.5625%/mo diminishing | 6.75% nominal p.a.)',
       createdAt: Date.now() - 30 * 24 * 60 * 60 * 1000
     },
     {
@@ -81,7 +81,7 @@
       apr: 8.50,
       minPayment: 9800.00,
       dueDate: 'Every 5th',
-      notes: '5-year auto loan (0.7083%/mo flat add-on, ~8.50% EIR p.a.)',
+      notes: '5-year auto loan (0.7083%/mo flat add-on | ~8.50% nominal p.a.)',
       createdAt: Date.now() - 60 * 24 * 60 * 60 * 1000
     },
     {
@@ -96,7 +96,7 @@
       apr: 36.00,
       minPayment: 3500.00,
       dueDate: 'Every 22nd',
-      notes: 'BSP standard credit card rate (3.0% / mo diminishing | 36.0% EIR)',
+      notes: 'BSP standard credit card rate (3.0% / mo diminishing | 36.0% nominal p.a.)',
       createdAt: Date.now() - 10 * 24 * 60 * 60 * 1000
     }
   ];

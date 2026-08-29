@@ -343,7 +343,7 @@
         const icon = d.icon || (window.BB_DEBTS ? window.BB_DEBTS.getDebtIcon(d.type) : '💳');
         const typeLabel = window.BB_DEBTS ? window.BB_DEBTS.getDebtTypeLabel(d.type) : 'Debt';
         const monthlyRate = window.BB_DEBTS ? window.BB_DEBTS.getDebtMonthlyRate(d) : (d.monthlyRate !== undefined ? parseFloat(d.monthlyRate) : ((parseFloat(d.apr) || 0) / 12));
-        const eir = monthlyRate * 12;
+        const nominal = monthlyRate * 12;
         const method = d.interestMethod === 'flat' ? 'Flat' : 'Dim';
 
         if (d.type === 'credit_card' || d.type === 'personal') {

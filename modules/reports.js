@@ -658,6 +658,7 @@
     const exportData = {
       app: 'Bantay Barya',
       author: 'Jerome Gotangco (https://github.com/jgotangco)',
+      attribution: 'Designed and product-directed by Jerome Gotangco. Developed with Google Antigravity / Gemini.',
       version: '2.9.0',
       exportedAt: new Date().toISOString(),
       baseCurrency: state.settings.baseCurrency || 'PHP',

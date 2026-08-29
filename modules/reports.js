@@ -339,11 +339,18 @@
     state.debts.forEach(d => {
       const bal = parseFloat(d.balance) || 0;
       if (bal > 0) {
+        totalLiabilities += bal;
+        const icon = d.icon || (window.BB_DEBTS ? window.BB_DEBTS.getDebtIcon(d.type) : '💳');
+        const typeLabel = window.BB_DEBTS ? window.BB_DEBTS.getDebtTypeLabel(d.type) : 'Debt';
+        const monthlyRate = window.BB_DEBTS ? window.BB_DEBTS.getDebtMonthlyRate(d) : (d.monthlyRate !== undefined ? parseFloat(d.monthlyRate) : ((parseFloat(d.apr) || 0) / 12));
+        const eir = monthlyRate * 12;
+        const method = d.interestMethod === 'flat' ? 'Flat' : 'Dim';
+
         if (d.type === 'credit_card' || d.type === 'personal') {
           totalCurrLiab += bal;
           currLiabHtml += `
             <div class="bs-row">
-              <span>💳 ${escapeHtml(d.name)} (${d.rateMonthly || 0}% / mo)</span>
+              <span>💳 ${escapeHtml(d.name)} (${monthlyRate.toFixed(2)}%/mo ${method})</span>
               <span class="font-mono debit-text">${formatCurrency(bal)}</span>
             </div>
           `;
@@ -351,7 +358,7 @@
           totalLongLiab += bal;
           longLiabHtml += `
             <div class="bs-row">
-              <span>🏛️ ${escapeHtml(d.name)} (${d.rateAnnual || 0}% p.a.)</span>
+              <span>🏛️ ${escapeHtml(d.name)} (${monthlyRate.toFixed(2)}%/mo ${method})</span>
               <span class="font-mono debit-text">${formatCurrency(bal)}</span>
             </div>
           `;
@@ -789,9 +796,9 @@
     ];
 
     state.debts = [
-      { id: 'd_demo_bpi_cc', name: 'BPI Visa Signature', type: 'credit_card', balance: 28500, minPayment: 1500, rateMonthly: 3.0, rateAnnual: 36.0, dueDay: 18, notes: 'Revolving card (Paid in full each cycle)', createdAt: 1700000000000 },
-      { id: 'd_demo_auto', name: 'Toyota Vios Auto Loan', type: 'auto_loan', balance: 340000, minPayment: 14850, rateMonthly: 0.82, rateAnnual: 9.8, dueDay: 25, notes: '5-year fixed chattel mortgage', createdAt: 1700000000000 },
-      { id: 'd_demo_home', name: 'Pag-IBIG Housing Loan', type: 'mortgage', balance: 1850000, minPayment: 16200, rateMonthly: 0.52, rateAnnual: 6.25, dueDay: 5, notes: '3-year repricing housing loan', createdAt: 1700000000000 }
+      { id: 'd_demo_bpi_cc', name: 'BPI Visa Signature', type: 'credit_card', balance: 28500, originalPrincipal: 28500, interestMethod: 'diminishing', minPayment: 1500, monthlyRate: 3.0, apr: 36.0, dueDay: 18, notes: 'Revolving card (Paid in full each cycle)', createdAt: 1700000000000 },
+      { id: 'd_demo_auto', name: 'Toyota Vios Auto Loan', type: 'auto_loan', balance: 340000, originalPrincipal: 340000, interestMethod: 'flat', minPayment: 14850, monthlyRate: 0.82, apr: 9.84, dueDay: 25, notes: '5-year fixed chattel mortgage', createdAt: 1700000000000 },
+      { id: 'd_demo_home', name: 'Pag-IBIG Housing Loan', type: 'mortgage', balance: 1850000, originalPrincipal: 1850000, interestMethod: 'diminishing', minPayment: 16200, monthlyRate: 0.52, apr: 6.24, dueDay: 5, notes: '3-year repricing housing loan', createdAt: 1700000000000 }
     ];
 
     state.bills = [

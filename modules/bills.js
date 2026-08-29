@@ -14,49 +14,87 @@
 
   const state = window.BB_STATE;
 
-  function getDaysUntilDue(dueDateStr) {
-    if (!dueDateStr) return 0;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const target = new Date(dueDateStr + 'T00:00:00');
-    const diffTime = target.getTime() - today.getTime();
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  function getDaysInMonth(year, month) {
+    return new Date(year, month, 0).getDate();
   }
 
-  function advanceDueDate(dueDateStr, frequency) {
-    const d = new Date(dueDateStr + 'T00:00:00');
-    const origDay = d.getDate();
+  function formatCalendarDate(year, month, day) {
+    const mm = String(month).padStart(2, '0');
+    const dd = String(day).padStart(2, '0');
+    return `${year}-${mm}-${dd}`;
+  }
+
+  function formatDisplayDate(dateStr) {
+    if (!dateStr) return '—';
+    const parts = dateStr.split('-').map(Number);
+    if (parts.length !== 3 || parts.some(isNaN)) return dateStr;
+    const [y, m, d] = parts;
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    if (m < 1 || m > 12) return dateStr;
+    return `${monthNames[m - 1]} ${d}, ${y}`;
+  }
+
+  function getDaysUntilDue(dueDateStr, refDate = new Date()) {
+    if (!dueDateStr) return 0;
+    const parts = dueDateStr.split('-').map(Number);
+    if (parts.length !== 3 || parts.some(isNaN)) return 0;
+    const [y, m, d] = parts;
+    const targetMidnight = new Date(y, m - 1, d, 0, 0, 0, 0);
+    const refMidnight = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate(), 0, 0, 0, 0);
+    const diffMs = targetMidnight.getTime() - refMidnight.getTime();
+    return Math.round(diffMs / (1000 * 60 * 60 * 24));
+  }
+
+  function advanceDueDate(dueDateStr, frequency, anchorDay = null) {
+    if (!dueDateStr) return '';
+    const parts = dueDateStr.split('-').map(Number);
+    if (parts.length !== 3 || parts.some(isNaN)) return dueDateStr;
+    const [currYear, currMonth, currDay] = parts;
+    const targetDay = anchorDay !== null && anchorDay !== undefined && !isNaN(parseInt(anchorDay, 10))
+      ? parseInt(anchorDay, 10)
+      : currDay;
+
+    let newYear = currYear;
+    let newMonth = currMonth; // 1-indexed (1-12)
+
     switch (frequency) {
-      case 'weekly':
-        d.setDate(d.getDate() + 7);
-        break;
-      case 'biweekly':
-        d.setDate(d.getDate() + 14);
-        break;
+      case 'weekly': {
+        const d = new Date(currYear, currMonth - 1, currDay + 7);
+        return formatCalendarDate(d.getFullYear(), d.getMonth() + 1, d.getDate());
+      }
+      case 'biweekly': {
+        const d = new Date(currYear, currMonth - 1, currDay + 14);
+        return formatCalendarDate(d.getFullYear(), d.getMonth() + 1, d.getDate());
+      }
       case 'monthly':
-        d.setMonth(d.getMonth() + 1);
-        if (d.getDate() !== origDay) d.setDate(0);
+        newMonth += 1;
         break;
       case 'bimonthly':
-        d.setMonth(d.getMonth() + 2);
-        if (d.getDate() !== origDay) d.setDate(0);
+        newMonth += 2;
         break;
       case 'quarterly':
-        d.setMonth(d.getMonth() + 3);
-        if (d.getDate() !== origDay) d.setDate(0);
+        newMonth += 3;
         break;
       case 'semi_annually':
-        d.setMonth(d.getMonth() + 6);
-        if (d.getDate() !== origDay) d.setDate(0);
+        newMonth += 6;
         break;
       case 'annually':
-        d.setFullYear(d.getFullYear() + 1);
+        newYear += 1;
         break;
       default:
-        d.setMonth(d.getMonth() + 1);
+        newMonth += 1;
         break;
     }
-    return d.toISOString().split('T')[0];
+
+    while (newMonth > 12) {
+      newMonth -= 12;
+      newYear += 1;
+    }
+
+    const maxDaysInTargetMonth = getDaysInMonth(newYear, newMonth);
+    const finalDay = Math.min(targetDay, maxDaysInTargetMonth);
+
+    return formatCalendarDate(newYear, newMonth, finalDay);
   }
 
   function getBillCategoryIcon(category) {
@@ -193,19 +231,21 @@
     let paidThisMonthCount = 0;
     let estMonthlyTotal = 0;
 
-    const currentMonth = new Date().toISOString().substring(0, 7);
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
     state.bills.forEach(bill => {
       const bAmount = parseFloat(bill.amount) || 0;
       const bCurr = bill.currency || baseCurr;
       const baseConvertedAmount = window.BB_WALLETS ? window.BB_WALLETS.convertCurrency(bAmount, bCurr, baseCurr) : bAmount;
 
-      if (bill.status === 'paid') {
-        if (bill.lastPaidDate && bill.lastPaidDate.startsWith(currentMonth)) {
-          paidThisMonthAmount += baseConvertedAmount;
-          paidThisMonthCount++;
-        }
-      } else {
+      // Count in paidThisMonth if settled in the current month (supports both recurring and one-time)
+      if (bill.lastPaidDate && bill.lastPaidDate.startsWith(currentMonth)) {
+        paidThisMonthAmount += baseConvertedAmount;
+        paidThisMonthCount++;
+      }
+
+      if (bill.status !== 'paid') {
         totalUnpaidAmount += baseConvertedAmount;
         totalUnpaidCount++;
 
@@ -324,9 +364,7 @@
         ? `<span class="bill-freq-tag">🔄 ${getFrequencyLabel(bill.frequency)}</span>`
         : `<span class="bill-freq-tag">1️⃣ One-Time</span>`;
 
-      const formattedDueDate = bill.dueDate
-        ? new Date(bill.dueDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-        : '—';
+      const formattedDueDate = formatDisplayDate(bill.dueDate);
 
       const catIcon = getBillCategoryIcon(bill.category);
 
@@ -366,7 +404,7 @@
                   <span>✓ Pay</span>
                 </button>
               ` : `
-                <button type="button" class="btn btn-ghost btn-sm" title="Mark as Unpaid" onclick="window.app.toggleBillStatus('${bill.id}')" style="font-size: 0.72rem; padding: 0.2rem 0.45rem;">
+                <button type="button" class="btn btn-ghost btn-sm" title="Mark as Unpaid" onclick="window.app.toggleBillStatus('${bill.id}')" style="font-size: 0.72rem; padding: 0.2rem 0.45rem;\">
                   <span>↩ Reopen</span>
                 </button>
               `}
@@ -411,6 +449,9 @@
       return;
     }
 
+    const [y, m, d] = dueDate.split('-').map(Number);
+    const anchorDay = !isNaN(d) ? d : 1;
+
     if (editId) {
       const existing = state.bills.find(b => b.id === editId);
       if (existing) {
@@ -420,6 +461,7 @@
         existing.currency = currency;
         existing.amount = amount;
         existing.dueDate = dueDate;
+        existing.anchorDay = anchorDay;
         existing.isRecurring = isRecurring;
         existing.frequency = frequency;
         existing.notifyDaysBefore = notifyDaysBefore;
@@ -437,6 +479,7 @@
         currency: currency,
         amount: amount,
         dueDate: dueDate,
+        anchorDay: anchorDay,
         isRecurring: isRecurring,
         frequency: frequency,
         notifyDaysBefore: notifyDaysBefore,
@@ -528,17 +571,16 @@
 
     document.getElementById('payBillPostTxCheckbox').checked = bill.autoPostTx !== false;
 
-    const formattedDue = bill.dueDate
-      ? new Date(bill.dueDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-      : '';
+    const formattedDue = formatDisplayDate(bill.dueDate);
     document.getElementById('payBillMetaDisplay').textContent = `Due: ${formattedDue} • ${bill.isRecurring ? getFrequencyLabel(bill.frequency) : 'One-Time'}`;
 
     const nextNotice = document.getElementById('payBillNextCycleNotice');
     const nextDisplay = document.getElementById('payBillNextDateDisplay');
 
     if (bill.isRecurring) {
-      const nextDate = advanceDueDate(bill.dueDate, bill.frequency);
-      const formattedNext = new Date(nextDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const anchor = bill.anchorDay || (bill.dueDate ? parseInt(bill.dueDate.split('-')[2], 10) : 1);
+      const nextDate = advanceDueDate(bill.dueDate, bill.frequency, anchor);
+      const formattedNext = formatDisplayDate(nextDate);
       if (nextDisplay) nextDisplay.textContent = formattedNext;
       if (nextNotice) nextNotice.style.display = 'block';
     } else {
@@ -584,10 +626,12 @@
 
     if (bill.isRecurring) {
       const oldDue = bill.dueDate;
-      bill.dueDate = advanceDueDate(oldDue, bill.frequency);
+      const anchor = bill.anchorDay || (oldDue ? parseInt(oldDue.split('-')[2], 10) : 1);
+      bill.anchorDay = anchor;
+      bill.dueDate = advanceDueDate(oldDue, bill.frequency, anchor);
       bill.lastPaidDate = payDate;
       bill.status = 'unpaid';
-      if (window.BB_CORE?.showToast) window.BB_CORE.showToast(`Settled ${bill.name}! Next cycle advanced to ${bill.dueDate}.`, 'success');
+      if (window.BB_CORE?.showToast) window.BB_CORE.showToast(`Settled ${bill.name}! Next cycle advanced to ${formatDisplayDate(bill.dueDate)}.`, 'success');
     } else {
       bill.status = 'paid';
       bill.lastPaidDate = payDate;
@@ -730,6 +774,9 @@
   }
 
   window.BB_BILLS = {
+    getDaysInMonth,
+    formatCalendarDate,
+    formatDisplayDate,
     getDaysUntilDue,
     advanceDueDate,
     getBillCategoryIcon,

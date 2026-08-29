@@ -1,14 +1,17 @@
 /**
  * Bantay Barya - Progressive Web App (PWA) Service Worker
  * Strategy:
- *  - Core App Logic (HTML, JS modules, CSS): Network-First with Cache Fallback for instant updates & full offline access.
- *  - Static CDN Assets (Fonts, Chart.js, Icons, PDF): Cache-First / Stale-While-Revalidate.
+ *  - Core App Logic (HTML, JS modules, CSS, icons, manifest): Network-First with Cache Fallback for instant updates & full offline access.
+ *  - Static CDN Assets (Google Fonts, Chart.js): Cache-First with Network Fetch Fallback.
  *  - Live FX APIs: Network-First with cached rate fallback.
- *  - Automatic Cache Upgrades & Old Cache Eviction.
+ *  - Modular Pre-caching: Atomic caching for required local assets, resilient non-blocking caching for optional/CDN assets.
+ *  - Selective Cache Eviction: Purges only Bantay-Barya/Ledger-Tracker caches while preserving unrelated origin caches.
  */
 
 const CACHE_NAME = 'bantay-barya-v2.9.0';
-const STATIC_ASSETS = [
+
+// 1. Required Local App Shell (Atomic precache: installation MUST fail if any of these are missing)
+const REQUIRED_LOCAL_ASSETS = [
   './',
   './index.html',
   './styles.css',
@@ -20,18 +23,29 @@ const STATIC_ASSETS = [
   './modules/bills.js',
   './modules/reports.js',
   './manifest.json',
-  './icons/icon.svg',
-  './USER_MANUAL.pdf',
+  './icons/icon.svg'
+];
+
+// 2. Optional / External Cross-Origin Assets (Cached non-atomically: failure does NOT break installation)
+const OPTIONAL_ASSETS = [
   'https://fonts.googleapis.com/css2?family=Inter+Tight:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,500&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap',
   'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS).catch((err) => {
-        console.warn('Some non-critical assets could not be cached immediately during install:', err);
-      });
+    caches.open(CACHE_NAME).then(async (cache) => {
+      // Required local assets must all succeed atomically
+      await cache.addAll(REQUIRED_LOCAL_ASSETS);
+
+      // Optional and cross-origin CDN assets are cached individually without failing installation
+      await Promise.all(
+        OPTIONAL_ASSETS.map((url) =>
+          cache.add(url).catch((err) => {
+            console.warn(`Optional asset failed to pre-cache (${url}):`, err);
+          })
+        )
+      );
     })
   );
   self.skipWaiting();
@@ -42,8 +56,10 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((keys) => {
       return Promise.all(
         keys.map((key) => {
-          if (key !== CACHE_NAME) {
-            console.log('Purging legacy cache bucket:', key);
+          // Restrict eviction to Bantay-Barya owned caches
+          const isBantayBaryaCache = key.startsWith('bantay-barya-') || key.startsWith('ledger-tracker-');
+          if (isBantayBaryaCache && key !== CACHE_NAME) {
+            console.log('Purging legacy Bantay-Barya cache bucket:', key);
             return caches.delete(key);
           }
         })

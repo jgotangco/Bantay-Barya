@@ -4,7 +4,11 @@
   "description": "A multi-wallet expense tracker. Designed and product-directed by Jerome Gotangco. Developed with Google Antigravity / Gemini.",
   "main": "app.js",
   "scripts": {
-    "test": "node tests/debts.test.js"
+    "test": "node tests/debts.test.js && node tests/bills_date.test.js && node tests/sw_upgrade.test.js && node tests/core_engine.test.js",
+    "test:debts": "node tests/debts.test.js",
+    "test:bills": "node tests/bills_date.test.js",
+    "test:sw": "node tests/sw_upgrade.test.js",
+    "test:core": "node tests/core_engine.test.js"
   },
   "keywords": [
     "personal-finance",

@@ -4,20 +4,6 @@
 (function (window) {
   'use strict';
 
-  const STORAGE_KEY_SAVE_SLOTS = 'bb_save_slots_v7';
-  const STORAGE_KEY_ACTIVE_SLOT_ID = 'bb_active_slot_id_v7';
-  const STORAGE_KEY_WALLETS = 'bb_wallets_v7';
-  const STORAGE_KEY_CATEGORIES = 'bb_categories_v7';
-  const STORAGE_KEY_TRANSACTIONS = 'bb_transactions_v7';
-  const STORAGE_KEY_SETTINGS = 'bb_settings_v7';
-  const STORAGE_KEY_DEBTS = 'bb_debts_v7';
-  const STORAGE_KEY_BILLS = 'bb_bills_v7';
-  const STORAGE_KEY_SEEN_ONBOARDING = 'bb_seen_onboarding_v7';
-  const STORAGE_KEY_PIN_HASH = 'bb_pin_hash_v7';
-  const STORAGE_KEY_PIN_ENABLED = 'bb_pin_enabled_v7';
-  const STORAGE_KEY_CUSTOM_RATES = 'bb_custom_fx_rates_v7';
-  const STORAGE_KEY_LAST_SAVED = 'bb_last_saved_timestamp_v7';
-
   const CURRENCIES = {
     PHP: { symbol: '₱', name: 'Philippine Peso', code: 'PHP', flag: '🇵🇭' },
     USD: { symbol: '$', name: 'US Dollar', code: 'USD', flag: '🇺🇸' },
@@ -43,13 +29,31 @@
 
   const DEFAULT_WALLETS = [
     {
-      id: 'wallet_primary',
-      name: 'Personal Spending',
+      id: 'wallet_bpi',
+      name: 'BPI Checking',
+      currency: 'PHP',
+      type: 'bank',
+      icon: '🏦',
+      initialBalance: 45000.00,
+      createdAt: Date.now() - 3600000
+    },
+    {
+      id: 'wallet_gcash',
+      name: 'GCash Wallet',
+      currency: 'PHP',
+      type: 'ewallet',
+      icon: '📱',
+      initialBalance: 8500.00,
+      createdAt: Date.now() - 2400000
+    },
+    {
+      id: 'wallet_cash',
+      name: 'Cash on Hand',
       currency: 'PHP',
       type: 'cash',
-      icon: '👛',
-      initialBalance: 0.00,
-      createdAt: Date.now()
+      icon: '💵',
+      initialBalance: 3200.00,
+      createdAt: Date.now() - 1200000
     }
   ];
 
@@ -70,8 +74,8 @@
       createdAt: Date.now() - 30 * 24 * 60 * 60 * 1000
     },
     {
-      id: 'debt_sample_auto',
-      name: 'Toyota Car Loan',
+      id: 'debt_sample_autoloan',
+      name: 'Toyota Vios Auto Loan',
       type: 'auto',
       icon: '🚗',
       balance: 380000.00,
@@ -85,8 +89,8 @@
       createdAt: Date.now() - 60 * 24 * 60 * 60 * 1000
     },
     {
-      id: 'debt_sample_cc',
-      name: 'BDO Mastercard',
+      id: 'debt_sample_creditcard',
+      name: 'BDO Gold Mastercard',
       type: 'credit_card',
       icon: '💳',
       balance: 45000.00,
@@ -102,107 +106,276 @@
   ];
 
   const FALLBACK_USD_RATES = {
-    PHP: 58.50, USD: 1.0, EUR: 0.92, JPY: 155.0, GBP: 0.79,
-    SGD: 1.35, AUD: 1.52, CAD: 1.37, HKD: 7.82, CNY: 7.24,
-    KRW: 1375.0, THB: 36.5, AED: 3.67
+    USD: 1.0,
+    PHP: 58.50,
+    EUR: 0.92,
+    JPY: 154.50,
+    GBP: 0.79,
+    SGD: 1.35,
+    AUD: 1.52,
+    CAD: 1.36,
+    HKD: 7.82,
+    CNY: 7.24,
+    KRW: 1375.0,
+    THB: 36.80,
+    AED: 3.67
   };
 
   const THEME_PALETTES = {
-    deep_teal: ['#7be3a8', '#1a7a8e', '#38bdf8', '#ff7b92', '#f59e0b', '#a78bfa', '#0d5e6e', '#34d399', '#f43f5e', '#60a5fa'],
-    sunflower: ['#f59e0b', '#0284c7', '#ea580c', '#eab308', '#06b6d4', '#10b981', '#f97316', '#3b82f6', '#d97706', '#ec4899'],
-    snow: ['#38bdf8', '#0284c7', '#1e3a8a', '#60a5fa', '#93c5fd', '#3b82f6', '#06b6d4', '#818cf8', '#64748b', '#f43f5e'],
-    sakura: ['#ec4899', '#f472b6', '#db2777', '#fbcfe8', '#be185d', '#fda4af', '#fb7185', '#e11d48', '#f43f5e', '#9d174d'],
-    pumpkin: ['#ea580c', '#d97706', '#c2410c', '#f59e0b', '#b45309', '#7c2d12', '#f97316', '#ca8a04', '#84cc16', '#e11d48'],
-    summer: ['#f59e0b', '#0284c7', '#ea580c', '#eab308', '#06b6d4', '#10b981', '#f97316', '#3b82f6', '#d97706', '#ec4899'],
-    winter: ['#38bdf8', '#0284c7', '#1e3a8a', '#60a5fa', '#93c5fd', '#3b82f6', '#06b6d4', '#818cf8', '#64748b', '#f43f5e'],
-    spring: ['#ec4899', '#f472b6', '#db2777', '#fbcfe8', '#be185d', '#fda4af', '#fb7185', '#e11d48', '#f43f5e', '#9d174d'],
-    fall: ['#ea580c', '#d97706', '#c2410c', '#f59e0b', '#b45309', '#7c2d12', '#f97316', '#ca8a04', '#84cc16', '#e11d48'],
-    default: ['#7be3a8', '#1a7a8e', '#38bdf8', '#ff7b92', '#f59e0b', '#a78bfa', '#0d5e6e', '#34d399', '#f43f5e', '#60a5fa']
+    deep_teal: {
+      name: 'Deep Teal',
+      primary: '#0f766e',
+      primaryLight: '#ccfbf1',
+      primaryDark: '#115e59',
+      accent: '#0d9488',
+      bgGradient: 'linear-gradient(135deg, #0f766e 0%, #115e59 100%)',
+      heroBg: 'linear-gradient(135deg, #134e4a 0%, #042f2e 100%)',
+      chartTheme: ['#0f766e', '#14b8a6', '#5eead4', '#2dd4bf', '#042f2e', '#0d9488']
+    },
+    emerald_slate: {
+      name: 'Emerald Slate',
+      primary: '#059669',
+      primaryLight: '#d1fae5',
+      primaryDark: '#065f46',
+      accent: '#10b981',
+      bgGradient: 'linear-gradient(135deg, #059669 0%, #064e3b 100%)',
+      heroBg: 'linear-gradient(135deg, #064e3b 0%, #022c22 100%)',
+      chartTheme: ['#059669', '#10b981', '#6ee7b7', '#34d399', '#022c22', '#047857']
+    },
+    navy_blue: {
+      name: 'Navy Blue',
+      primary: '#1d4ed8',
+      primaryLight: '#dbeafe',
+      primaryDark: '#1e40af',
+      accent: '#3b82f6',
+      bgGradient: 'linear-gradient(135deg, #1d4ed8 0%, #172554 100%)',
+      heroBg: 'linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%)',
+      chartTheme: ['#1d4ed8', '#3b82f6', '#93c5fd', '#60a5fa', '#0f172a', '#1e40af']
+    },
+    royal_purple: {
+      name: 'Royal Purple',
+      primary: '#7c3aed',
+      primaryLight: '#ede9fe',
+      primaryDark: '#5b21b6',
+      accent: '#8b5cf6',
+      bgGradient: 'linear-gradient(135deg, #7c3aed 0%, #3b0764 100%)',
+      heroBg: 'linear-gradient(135deg, #581c87 0%, #1e1b4b 100%)',
+      chartTheme: ['#7c3aed', '#8b5cf6', '#c4b5fd', '#a78bfa', '#1e1b4b', '#6d28d9']
+    },
+    sunset_amber: {
+      name: 'Sunset Amber',
+      primary: '#d97706',
+      primaryLight: '#fef3c7',
+      primaryDark: '#92400e',
+      accent: '#f59e0b',
+      bgGradient: 'linear-gradient(135deg, #d97706 0%, #451a03 100%)',
+      heroBg: 'linear-gradient(135deg, #78350f 0%, #291205 100%)',
+      chartTheme: ['#d97706', '#f59e0b', '#fcd34d', '#fbbf24', '#291205', '#b45309']
+    },
+    crimson_ruby: {
+      name: 'Crimson Ruby',
+      primary: '#e11d48',
+      primaryLight: '#ffe4e6',
+      primaryDark: '#9f1239',
+      accent: '#f43f5e',
+      bgGradient: 'linear-gradient(135deg, #e11d48 0%, #4c0519 100%)',
+      heroBg: 'linear-gradient(135deg, #881337 0%, #1c0209 100%)',
+      chartTheme: ['#e11d48', '#f43f5e', '#fda4af', '#fb7185', '#1c0209', '#be123c']
+    },
+    charcoal_onyx: {
+      name: 'Charcoal Onyx',
+      primary: '#334155',
+      primaryLight: '#f1f5f9',
+      primaryDark: '#0f172a',
+      accent: '#475569',
+      bgGradient: 'linear-gradient(135deg, #334155 0%, #020617 100%)',
+      heroBg: 'linear-gradient(135deg, #1e293b 0%, #020617 100%)',
+      chartTheme: ['#334155', '#64748b', '#cbd5e1', '#94a3b8', '#020617', '#475569']
+    },
+    sunflower: {
+      name: 'Sunflower (Auto/Seasonal)',
+      primary: '#0f766e',
+      primaryLight: '#ccfbf1',
+      primaryDark: '#115e59',
+      accent: '#0d9488',
+      bgGradient: 'linear-gradient(135deg, #0f766e 0%, #115e59 100%)',
+      heroBg: 'linear-gradient(135deg, #134e4a 0%, #042f2e 100%)',
+      chartTheme: ['#0f766e', '#14b8a6', '#5eead4', '#2dd4bf', '#042f2e', '#0d9488']
+    }
   };
 
-  const SAMPLE_BILLS = [
+  const INSPIRATION_ITEMS = [
     {
-      id: 'bill_sample_meralco',
-      name: 'Meralco Electric Bill',
-      amount: 6850.00,
-      dueDay: 15,
-      frequency: 'monthly',
-      category: 'Electricity (Meralco)',
-      walletId: 'wallet_primary',
-      isAutoDebit: false,
-      notes: 'Customer Account No: 1042-8891-03',
-      createdAt: Date.now() - 30 * 24 * 60 * 60 * 1000
+      category: 'Ipon Tip (Savings Tip)',
+      icon: '💡',
+      text: 'Apply the 50-30-20 rule to your take-home pay: 50% for Needs, 30% for Wants, and at least 20% dedicated to Savings, Emergency Fund & Debt Payoff.',
+      author: 'Bangko Sentral ng Pilipinas (BSP) Financial Literacy'
     },
     {
-      id: 'bill_sample_pldt',
-      name: 'PLDT Home Fiber Internet',
-      amount: 2099.00,
-      dueDay: 20,
-      frequency: 'monthly',
-      category: 'Internet & Mobile',
-      walletId: 'wallet_primary',
-      isAutoDebit: true,
-      notes: 'Plan 200Mbps UNLI Fiber',
-      createdAt: Date.now() - 30 * 24 * 60 * 60 * 1000
+      category: 'Emergency Fund',
+      icon: '🛡️',
+      text: 'Prioritize building 3 to 6 months worth of essential living expenses in high-yield digital banks before exploring aggressive equity investments.',
+      author: 'Personal Finance Philippines'
     },
     {
-      id: 'bill_sample_water',
-      name: 'Maynilad Water',
-      amount: 820.00,
-      dueDay: 8,
-      frequency: 'monthly',
-      category: 'Water & Utilities',
-      walletId: 'wallet_primary',
-      isAutoDebit: false,
-      notes: 'Contract Account: 99120412',
-      createdAt: Date.now() - 30 * 24 * 60 * 60 * 1000
+      category: 'Debt Strategy',
+      icon: '❄️',
+      text: 'The Debt Snowball method provides quick psychological wins by paying off the smallest balance first, boosting your motivation to stay debt-free.',
+      author: 'Debt Elimination Principle'
     },
     {
-      id: 'bill_sample_netflix',
-      name: 'Netflix Premium 4K',
-      amount: 549.00,
-      dueDay: 28,
-      frequency: 'monthly',
-      category: 'Entertainment & Leisure',
-      walletId: 'wallet_primary',
-      isAutoDebit: true,
-      notes: 'Family Subscription Plan',
-      createdAt: Date.now() - 30 * 24 * 60 * 60 * 1000
+      category: 'Avalanche Strategy',
+      icon: '🏔️',
+      text: 'The Debt Avalanche saves you the most money mathematically by aggressively eliminating debts with the highest monthly interest rate first.',
+      author: 'Financial Optimization'
+    },
+    {
+      category: 'Smart Spending',
+      icon: '👛',
+      text: 'Before making any unplanned purchase above ₱1,500, practice the 48-Hour Rule: wait two full days to see if it is a genuine need or an impulsive want.',
+      author: 'Mindful Money Management'
+    },
+    {
+      category: 'Multi-Wallet Tip',
+      icon: '🎯',
+      text: 'Use dedicated digital bank wallets for specific goals (e.g. Tax buffer, Travel fund, Annual insurance). Keep your daily spending wallet separate.',
+      author: 'Bantay Barya Pro Tip'
     }
   ];
 
-  function getRelativeDateString(offsetDays = 0) {
-    const d = new Date();
-    d.setDate(d.getDate() + offsetDays);
+  const HERO_SLIDES = [
+    {
+      badge: '📈 Visual Health',
+      title: 'Real-Time Financial Radar',
+      desc: 'Interactive 30-day cashflow trajectories, expense category proportions, and net liquidity breakdown.'
+    },
+    {
+      badge: '🛡️ Emergency Runway',
+      title: 'FIFO Spending Buffer (Age of Money)',
+      desc: 'Calculates how many days your cash buffer can sustain you without needing new incoming income.'
+    },
+    {
+      badge: '🏔️ Utang Strategy',
+      title: 'Snowball & Avalanche Engine',
+      desc: 'Simulate exact monthly payoff timelines, total interest saved, and milestone eliminations.'
+    },
+    {
+      badge: '🔔 Bill Due Reminders',
+      title: 'Proactive Payment Schedules',
+      desc: 'Never miss a due date with automated advance calculation and instant transaction posting.'
+    }
+  ];
+
+  const SAMPLE_BILLS = [
+    {
+      id: 'bill_meralco_sample',
+      name: 'Meralco Electric Bill',
+      category: 'Utilities',
+      amount: 3850.00,
+      currency: 'PHP',
+      walletId: 'wallet_bpi',
+      dueDate: getRelativeDateString(5),
+      anchorDay: 5,
+      isRecurring: true,
+      frequency: 'monthly',
+      notifyDaysBefore: 3,
+      status: 'unpaid',
+      lastPaidDate: null,
+      autoPostTx: true,
+      notes: 'Monthly electric power consumption',
+      createdAt: Date.now() - 120000
+    },
+    {
+      id: 'bill_pldt_sample',
+      name: 'PLDT Fiber Internet',
+      category: 'Telecom & Internet',
+      amount: 1699.00,
+      currency: 'PHP',
+      walletId: 'wallet_gcash',
+      dueDate: getRelativeDateString(12),
+      anchorDay: 12,
+      isRecurring: true,
+      frequency: 'monthly',
+      notifyDaysBefore: 2,
+      status: 'unpaid',
+      lastPaidDate: null,
+      autoPostTx: true,
+      notes: 'Fiber 200Mbps Home Plan',
+      createdAt: Date.now() - 100000
+    },
+    {
+      id: 'bill_spotify_sample',
+      name: 'Spotify Premium Family',
+      category: 'Subscriptions',
+      amount: 549.00,
+      currency: 'PHP',
+      walletId: 'wallet_bpi',
+      dueDate: getRelativeDateString(18),
+      anchorDay: 18,
+      isRecurring: true,
+      frequency: 'monthly',
+      notifyDaysBefore: 1,
+      status: 'unpaid',
+      lastPaidDate: null,
+      autoPostTx: true,
+      notes: 'Monthly streaming plan',
+      createdAt: Date.now() - 80000
+    }
+  ];
+
+  const STORAGE_KEY_SAVE_SLOTS = 'bantay_barya_save_slots_v7';
+  const STORAGE_KEY_ACTIVE_SLOT_ID = 'bantay_barya_active_slot_id_v7';
+  const STORAGE_KEY_WALLETS = 'bantay_barya_wallets_v7';
+  const STORAGE_KEY_DEBTS = 'bantay_barya_debts_v7';
+  const STORAGE_KEY_BILLS = 'bantay_barya_bills_v7';
+  const STORAGE_KEY_TRANSACTIONS = 'bantay_barya_transactions_v7';
+  const STORAGE_KEY_SETTINGS = 'bantay_barya_settings_v7';
+  const STORAGE_KEY_CATEGORIES = 'bantay_barya_categories_v7';
+  const STORAGE_KEY_THEME = 'bantay_barya_theme_v7';
+  const STORAGE_KEY_FX_CACHE = 'bantay_barya_fx_cache_v7';
+  const STORAGE_KEY_DONT_SHOW_WELCOME = 'bantay_barya_dont_show_welcome_v7';
+  const STORAGE_KEY_PIN = 'bantay_barya_pin_v7';
+  const STORAGE_KEY_LAST_SAVED = 'bantay_barya_last_saved_v7';
+
+  const LEGACY_KEY_TRANSACTIONS_V6 = 'bantay_barya_transactions_v6';
+  const LEGACY_KEY_SETTINGS_V6 = 'bantay_barya_settings_v6';
+  const LEGACY_KEY_CATEGORIES_V6 = 'bantay_barya_categories_v6';
+  const LEGACY_KEY_THEME_V6 = 'bantay_barya_theme_v6';
+  const LEGACY_KEY_PIN_V6 = 'bantay_barya_pin_v6';
+
+  function getRelativeDateString(offsetDays = 0, baseDate = new Date()) {
+    const d = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate() + offsetDays);
     const yyyy = d.getFullYear();
     const mm = String(d.getMonth() + 1).padStart(2, '0');
     const dd = String(d.getDate()).padStart(2, '0');
     return `${yyyy}-${mm}-${dd}`;
   }
 
-  function formatCurrency(amount, currencyCode = 'PHP') {
-    const num = parseFloat(amount) || 0;
-    const curr = CURRENCIES[currencyCode] || CURRENCIES.PHP;
-    const formattedNum = num.toLocaleString('en-US', {
+  function formatDateTime(ts) {
+    if (!ts) return '';
+    const d = new Date(ts);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' ' +
+      d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function formatCurrency(val, baseCurr = (window.BB_STATE?.settings?.baseCurrency || 'PHP')) {
+    const num = parseFloat(val) || 0;
+    const sym = CURRENCIES[baseCurr]?.symbol || '₱';
+    return (num < 0 ? '-' : '') + sym + Math.abs(num).toLocaleString('en-US', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     });
-    return `${curr.symbol}${formattedNum}`;
   }
 
   function formatForeignCurrency(amount, currencyCode) {
+    const sym = CURRENCIES[currencyCode]?.symbol || currencyCode;
     const num = parseFloat(amount) || 0;
-    const curr = CURRENCIES[currencyCode] || { symbol: currencyCode + ' ', code: currencyCode };
-    const formattedNum = num.toLocaleString('en-US', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    });
-    return `${curr.symbol}${formattedNum}`;
+    return `${sym}${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   }
 
   function escapeHtml(str) {
-    if (typeof str !== 'string') return '';
-    return str
+    if (!str) return '';
+    return String(str)
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
@@ -210,65 +383,78 @@
       .replace(/'/g, '&#039;');
   }
 
+  const state = {
+    saveSlots: [],
+    activeSlotId: 'slot_primary',
+    wallets: [...DEFAULT_WALLETS],
+    debts: [],
+    bills: [],
+    selectedWalletId: 'all',
+    transactions: [],
+    categories: [...DEFAULT_CATEGORIES],
+    settings: {
+      userName: '',
+      baseCurrency: 'PHP'
+    },
+    theme: 'auto_date',
+    effectiveTheme: 'sunflower',
+    currentInspirationIndex: 0,
+    currentHeroSlide: 0,
+    searchQuery: '',
+    typeFilter: 'all',
+    dateFilter: 'all',
+    sortColumn: 'date',
+    sortDirection: 'desc',
+    billSearchQuery: '',
+    billStatusFilter: 'all',
+    billCategoryFilter: 'all',
+    reportTimeframe: 'all',
+    reportWalletFilter: 'all',
+    reportChartType: 'pie',
+    activeReportTab: 'expense',
+    activeDebtTab: 'my_debts',
+    snowballStrategy: 'snowball',
+    selectedSimDebtIds: [],
+    extraMonthlyPayment: 0,
+    lumpSumAdvancePayment: 0,
+    currentInputFxRate: 1.0,
+    detectedPlatform: 'desktop'
+  };
+
   window.BB_DATA = {
-    STORAGE_KEY_SAVE_SLOTS,
-    STORAGE_KEY_ACTIVE_SLOT_ID,
-    STORAGE_KEY_WALLETS,
-    STORAGE_KEY_CATEGORIES,
-    STORAGE_KEY_TRANSACTIONS,
-    STORAGE_KEY_SETTINGS,
-    STORAGE_KEY_DEBTS,
-    STORAGE_KEY_BILLS,
-    STORAGE_KEY_SEEN_ONBOARDING,
-    STORAGE_KEY_PIN_HASH,
-    STORAGE_KEY_PIN_ENABLED,
-    STORAGE_KEY_CUSTOM_RATES,
-    STORAGE_KEY_LAST_SAVED,
     CURRENCIES,
     DEFAULT_CATEGORIES,
     DEFAULT_WALLETS,
     SAMPLE_DEBTS,
-    SAMPLE_BILLS,
     FALLBACK_USD_RATES,
     THEME_PALETTES,
+    INSPIRATION_ITEMS,
+    HERO_SLIDES,
+    SAMPLE_BILLS,
+    STORAGE_KEY_SAVE_SLOTS,
+    STORAGE_KEY_ACTIVE_SLOT_ID,
+    STORAGE_KEY_WALLETS,
+    STORAGE_KEY_DEBTS,
+    STORAGE_KEY_BILLS,
+    STORAGE_KEY_TRANSACTIONS,
+    STORAGE_KEY_SETTINGS,
+    STORAGE_KEY_CATEGORIES,
+    STORAGE_KEY_THEME,
+    STORAGE_KEY_FX_CACHE,
+    STORAGE_KEY_DONT_SHOW_WELCOME,
+    STORAGE_KEY_PIN,
+    STORAGE_KEY_LAST_SAVED,
+    LEGACY_KEY_TRANSACTIONS_V6,
+    LEGACY_KEY_SETTINGS_V6,
+    LEGACY_KEY_CATEGORIES_V6,
+    LEGACY_KEY_THEME_V6,
+    LEGACY_KEY_PIN_V6,
     getRelativeDateString,
+    formatDateTime,
     formatCurrency,
     formatForeignCurrency,
     escapeHtml
   };
 
-  window.BB_STATE = {
-    saveSlots: [],
-    activeSlotId: 'slot_default',
-    wallets: [],
-    activeWalletId: null,
-    categories: [],
-    transactions: [],
-    debts: [],
-    bills: [],
-    selectedSimDebtIds: [],
-    snowballStrategy: 'snowball',
-    extraMonthlyPayment: 0,
-    lumpSumAdvancePayment: 0,
-    activeDebtTab: 'my_debts',
-    activeReportTab: 'expense',
-    reportWalletFilter: 'all',
-    reportTimeframe: 'all',
-    reportChartType: 'doughnut',
-    settings: {
-      baseCurrency: 'PHP',
-      theme: 'deep_teal',
-      dateFormat: 'YYYY-MM-DD',
-      autoSaveInterval: 5,
-      soundEffects: false,
-      hapticFeedback: false,
-      pinLockEnabled: false,
-      showSpendingBuffer: true,
-      lastSaved: null
-    },
-    fxRates: { ...FALLBACK_USD_RATES },
-    fxLastFetched: null,
-    heroCarouselIndex: 0,
-    heroCarouselTimer: null
-  };
+  window.BB_STATE = state;
 })(window);

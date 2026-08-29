@@ -23,3 +23,200 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <link rel="stylesheet" href="styles.css">
 </head>
+<body>
+  <!-- 7-DIGIT PIN SECURITY LOCK SCREEN OVERLAY -->
+  <div id="pinLockModal" class="pin-lock-overlay" style="display: none;">
+    <div class="pin-lock-card">
+      <div class="pin-lock-header">
+        <div class="brand-icon" style="width: 54px; height: 54px; margin: 0 auto 0.75rem;">
+          <img src="icons/icon.svg" alt="Bantay Barya" width="54" height="54">
+        </div>
+        <h2 class="pin-lock-title">Bantay Barya Locked</h2>
+        <p class="pin-lock-subtitle">Enter your 7-digit PIN to access your multi-wallet ledger</p>
+      </div>
+
+      <div class="pin-display-wrapper" id="pinDisplayWrapper">
+        <div class="pin-dot" data-index="0"></div>
+        <div class="pin-dot" data-index="1"></div>
+        <div class="pin-dot" data-index="2"></div>
+        <div class="pin-dot" data-index="3"></div>
+        <div class="pin-dot" data-index="4"></div>
+        <div class="pin-dot" data-index="5"></div>
+        <div class="pin-dot" data-index="6"></div>
+      </div>
+
+      <input type="password" id="pinHiddenInput" inputmode="numeric" maxlength="7" pattern="[0-9]*" class="pin-hidden-input" autocomplete="one-time-code" autofocus>
+
+      <div id="pinErrorMessage" class="pin-error-text" style="display: none;">
+        Incorrect PIN. Please try again.
+      </div>
+
+      <!-- Numeric Keypad -->
+      <div class="pin-keypad">
+        <button type="button" class="pin-key" data-key="1">1</button>
+        <button type="button" class="pin-key" data-key="2">2</button>
+        <button type="button" class="pin-key" data-key="3">3</button>
+        <button type="button" class="pin-key" data-key="4">4</button>
+        <button type="button" class="pin-key" data-key="5">5</button>
+        <button type="button" class="pin-key" data-key="6">6</button>
+        <button type="button" class="pin-key" data-key="7">7</button>
+        <button type="button" class="pin-key" data-key="8">8</button>
+        <button type="button" class="pin-key" data-key="9">9</button>
+        <button type="button" class="pin-key pin-key-action" id="pinClearKey">Clear</button>
+        <button type="button" class="pin-key" data-key="0">0</button>
+        <button type="button" class="pin-key pin-key-action" id="pinBackspaceKey">⌫</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="app-container" id="mainAppContainer">
+    <!-- Top Navigation Header -->
+    <header class="app-header">
+      <div class="brand-section">
+        <div class="brand-icon">
+          <img src="icons/icon.svg" alt="Bantay Barya Peso Emblem" width="44" height="44">
+        </div>
+        <div>
+          <div class="brand-title-row">
+            <h1 class="brand-title">Bantay Barya</h1>
+            <!-- Device Detection Badge -->
+            <span id="deviceBadge" class="device-badge" title="Detected Device">
+              <span id="deviceIcon">💻</span>
+              <span id="deviceText">Desktop</span>
+            </span>
+          </div>
+          <!-- Subtitle formatted with clickable attribution links -->
+          <p class="brand-subtitle">
+            A multi-wallet expense tracker. Designed and product-directed by <a href="https://github.com/jgotangco" target="_blank" rel="noopener noreferrer" class="link-antigravity" title="GitHub: Jerome Gotangco"><strong>Jerome Gotangco</strong></a>. Developed with <a href="https://antigravity.google/" target="_blank" rel="noopener noreferrer" class="link-antigravity" title="Visit Antigravity website"><strong>Google Antigravity / Gemini</strong></a>. | <span id="headerBaseCurrencyTag">Base: PHP (₱)</span>
+          </p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <!-- Auto-Save Status Pill / Trigger Button -->
+        <button id="headerAutoSaveBtn" class="autosave-header-pill" title="Auto-saves automatically every 5 minutes. Click to save now!">
+          <span class="autosave-dot" id="headerAutoSaveDot"></span>
+          <span id="headerLastSavedDisplay">Saved just now</span>
+        </button>
+
+        <!-- Manage Wallets Modal Trigger -->
+        <button id="openWalletsModalBtn" class="btn btn-outline" title="Manage Wallets & Accounts">
+          <span style="font-size: 1.05rem; line-height: 1;">👛</span>
+          <span class="btn-text">Wallets</span>
+        </button>
+
+        <!-- Inter-Wallet Transfer Funds Trigger -->
+        <button id="openTransferModalBtn" class="btn btn-outline btn-transfer-header" title="Transfer Funds Between Wallets (Zero Expense)">
+          <span style="font-size: 1.05rem; line-height: 1;">⇄</span>
+          <span class="btn-text">Transfer</span>
+        </button>
+
+        <!-- Reconcile Balance Button with Two Hands Shaking (🤝 Handshake) -->
+        <button id="openReconcileModalBtn" class="btn btn-outline btn-reconcile" title="Reconcile Wallet Ledger with Actual Statement Balance">
+          <span class="handshake-icon-span">🤝</span>
+          <span class="btn-text">Reconcile</span>
+        </button>
+
+        <!-- Manage Categories Button -->
+        <button id="openCategoryModalBtn" class="btn btn-outline" title="Manage Expense Items & Categories">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="8" y1="6" x2="21" y2="6"></line>
+            <line x1="8" y1="12" x2="21" y2="12"></line>
+            <line x1="8" y1="18" x2="21" y2="18"></line>
+            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+          </svg>
+          <span class="btn-text">Categories</span>
+        </button>
+
+        <!-- Liabilities & Debt Snowball Modal Trigger -->
+        <button id="openDebtsModalBtn" class="btn btn-outline btn-debts-header" title="Liabilities, Loans & Debt Snowball Simulator">
+          <span style="font-size: 1.05rem; line-height: 1;">💳</span>
+          <span class="btn-text">Debts</span>
+          <span id="headerDebtCountBadge" class="header-count-badge" style="display: none;">0</span>
+        </button>
+
+        <!-- Bill Tracker & Payment Schedule Trigger -->
+        <button id="openBillsModalBtn" class="btn btn-outline btn-bills-header" title="Bill Tracker, Payment Schedules & Due Reminders">
+          <span style="font-size: 1.05rem; line-height: 1;">📅</span>
+          <span class="btn-text">Bills</span>
+          <span id="headerBillsBadge" class="header-count-badge" style="display: none;">0</span>
+        </button>
+
+        <!-- Reports Modal Trigger -->
+        <button id="openReportBtn" class="btn btn-primary" title="Financial Reports: Expense Breakdown & Balance Sheet">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path>
+            <path d="M22 12A10 10 0 0 0 12 2v10z"></path>
+          </svg>
+          <span>Reports</span>
+        </button>
+
+        <!-- Tutorial, Documentation & Philippine Financial Literacy Guide Trigger -->
+        <button id="openGuideModalBtn" class="btn btn-outline" title="App Tutorial, Documentation & Philippine Financial Health Guide">
+          <span style="font-size: 1.05rem; line-height: 1;">📚</span>
+          <span class="btn-text">Guide</span>
+        </button>
+
+        <!-- Account Settings Modal Trigger (Includes Saves & About) -->
+        <button id="openInitialBalanceBtn" class="btn btn-outline" title="Settings: Profile, Saves (.barya), Themes, Currency, PIN & About">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+          <span class="btn-text">Settings</span>
+        </button>
+      </div>
+    </header>
+  </div>
+
+  <nav class="mobile-nav-bar" id="mobileNavBar">
+    <button type="button" class="mobile-nav-item active" id="mobileNavHomeBtn" title="Ledger & Entries">
+      <div class="mobile-nav-icon-box">
+        <span>🏠</span>
+      </div>
+      <span class="mobile-nav-label">Ledger</span>
+    </button>
+    <button type="button" class="mobile-nav-item" id="mobileNavWalletsBtn" title="Manage Wallets">
+      <div class="mobile-nav-icon-box">
+        <span>👛</span>
+      </div>
+      <span class="mobile-nav-label">Wallets</span>
+    </button>
+    <button type="button" class="mobile-nav-item" id="mobileNavBillsBtn" title="Bill Tracker">
+      <div class="mobile-nav-icon-box">
+        <span>📅</span>
+      </div>
+      <span class="mobile-nav-label">Bills</span>
+    </button>
+    <button type="button" class="mobile-nav-item" id="mobileNavDebtsBtn" title="Debts & Snowball">
+      <div class="mobile-nav-icon-box">
+        <span>💳</span>
+      </div>
+      <span class="mobile-nav-label">Debts</span>
+    </button>
+    <button type="button" class="mobile-nav-item" id="mobileNavReportsBtn" title="Financial Reports">
+      <div class="mobile-nav-icon-box">
+        <span>📊</span>
+      </div>
+      <span class="mobile-nav-label">Reports</span>
+    </button>
+    <button type="button" class="mobile-nav-item" id="mobileNavSettingsBtn" title="Settings, Saves & About">
+      <div class="mobile-nav-icon-box">
+        <span>⚙️</span>
+      </div>
+      <span class="mobile-nav-label">Settings</span>
+    </button>
+  </nav>
+
+  <script src="version.js"></script>
+  <script src="modules/data.js"></script>
+  <script src="modules/theme.js"></script>
+  <script src="modules/wallets.js"></script>
+  <script src="modules/debts.js"></script>
+  <script src="modules/bills.js"></script>
+  <script src="modules/reports.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

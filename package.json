@@ -1,0 +1,20 @@
+{
+  "name": "bantay-barya",
+  "version": "2.9.0",
+  "description": "A multi-wallet expense tracker. Designed and product-directed by Jerome Gotangco. Developed with Google Antigravity / Gemini.",
+  "main": "app.js",
+  "scripts": {
+    "test": "node tests/debts.test.js"
+  },
+  "keywords": [
+    "personal-finance",
+    "expense-tracker",
+    "philippines",
+    "snowball",
+    "avalanche",
+    "debt-tracker",
+    "multi-wallet"
+  ],
+  "author": "Jerome Gotangco (https://github.com/jgotangco)",
+  "license": "MIT"
+}

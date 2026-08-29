@@ -96,5 +96,10 @@ All financial data is stored **100% locally** in your browser's `localStorage` a
 
 ---
 
+## 👤 Credits & Attribution
+Designed and product-directed by **[Jerome Gotangco](https://github.com/jgotangco)**. Developed with **Google Antigravity / Gemini**.
+
+---
+
 ## 📄 License
 This project is open-source and available under the [MIT License](LICENSE).

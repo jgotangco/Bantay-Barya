@@ -11,11 +11,16 @@
 try {
   importScripts('./version.js');
 } catch (e) {
-  // In test environments or when importScripts is not available,
-  // BANTAY_BARYA_VERSION may be injected into globalThis or fallback.
+  // In environments where importScripts is not available or fails,
+  // version metadata must already be present in globalThis.
 }
 
-const APP_VERSION = (typeof globalThis !== 'undefined' && globalThis.BANTAY_BARYA_VERSION) || '2.9.0';
+const APP_VERSION = typeof globalThis !== 'undefined' ? globalThis.BANTAY_BARYA_VERSION : null;
+
+if (!APP_VERSION) {
+  throw new Error('Bantay Barya version metadata is unavailable. Regenerate version.js.');
+}
+
 const CACHE_NAME = `bantay-barya-v${APP_VERSION}`;
 
 // 1. Required Local App Shell (Atomic precache: installation MUST fail if any of these are missing)

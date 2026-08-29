@@ -6,10 +6,12 @@
  * 2. version.js exists on disk and defines globalThis.BANTAY_BARYA_VERSION.
  * 3. The value in version.js strictly equals package.json.version.
  * 4. sw.js derives CACHE_NAME dynamically from the canonical version rather than hard-coding a static version string.
- * 5. The computed CACHE_NAME matches `bantay-barya-v${package.json.version}`.
- * 6. Production source files do not contain conflicting hard-coded CURRENT version constants.
- * 7. Release-Safety Test: Demonstrates with test fixtures that bumping package version to X+1 updates CACHE_NAME to bantay-barya-vX+1 without editing sw.js.
- * 8. Deterministic Output: Running syncVersion repeatedly yields identical file content.
+ * 5. sw.js contains NO literal current app version string used as a fallback (no || '2.9.0').
+ * 6. Missing version metadata causes sw.js to throw an explicit error on startup rather than silently falling back.
+ * 7. The computed CACHE_NAME matches `bantay-barya-v${package.json.version}`.
+ * 8. Production source files do not contain conflicting hard-coded CURRENT version constants.
+ * 9. Release-Safety Test: Demonstrates with test fixtures that bumping package version to X+1 updates CACHE_NAME to bantay-barya-vX+1 without editing sw.js.
+ * 10. Deterministic Output: Running syncVersion repeatedly yields identical file content.
  */
 
 const assert = require('assert/strict');
@@ -72,7 +74,7 @@ test('version.js defines BANTAY_BARYA_VERSION exactly matching package.json.vers
   );
 });
 
-console.log('\n--- 2. Service Worker Dynamic Derivation ---');
+console.log('\n--- 2. Service Worker Dynamic Derivation & Strict Fallback Elimination ---');
 
 test('sw.js derives CACHE_NAME dynamically from globalThis.BANTAY_BARYA_VERSION', () => {
   const swContent = fs.readFileSync(swJsPath, 'utf8');
@@ -86,6 +88,39 @@ test('sw.js derives CACHE_NAME dynamically from globalThis.BANTAY_BARYA_VERSION'
   assert.ok(
     swContent.includes('globalThis.BANTAY_BARYA_VERSION') || swContent.includes('APP_VERSION'),
     'sw.js must reference BANTAY_BARYA_VERSION or derived APP_VERSION'
+  );
+});
+
+test('sw.js contains no literal current app version string used as a fallback', () => {
+  const swContent = fs.readFileSync(swJsPath, 'utf8');
+
+  // Ensure no literal current app version is present in sw.js
+  assert.ok(
+    !swContent.includes(`'${pkg.version}'`) && !swContent.includes(`"${pkg.version}"`),
+    `sw.js must NOT contain literal current version '${pkg.version}' as a fallback or constant`
+  );
+
+  assert.ok(
+    !swContent.includes("|| '2.9.0'") && !swContent.includes('|| "2.9.0"'),
+    "sw.js must NOT contain hardcoded fallback '2.9.0'"
+  );
+});
+
+test('Missing version metadata causes sw.js to throw an explicit Error on startup', () => {
+  const swContent = fs.readFileSync(swJsPath, 'utf8');
+  const mockSelf = {
+    addEventListener: () => {},
+    skipWaiting: () => {},
+    clients: { claim: async () => {} }
+  };
+  const mockImportScriptsNoOp = () => {};
+  const initSw = new Function('self', 'caches', 'fetch', 'importScripts', 'globalThis', swContent);
+
+  assert.throws(
+    () => {
+      initSw(mockSelf, {}, async () => {}, mockImportScriptsNoOp, {});
+    },
+    /Bantay Barya version metadata is unavailable/
   );
 });
 

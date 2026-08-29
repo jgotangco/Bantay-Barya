@@ -1,17 +1,28 @@
 /**
- * Continuous Income & Expense Tracker - Service Worker
- * Enables offline access and PWA installation on Mobile & Desktop
+ * Bantay Barya - Progressive Web App (PWA) Service Worker
+ * Strategy:
+ *  - Core App Logic (HTML, JS modules, CSS): Network-First with Cache Fallback for instant updates & full offline access.
+ *  - Static CDN Assets (Fonts, Chart.js, Icons, PDF): Cache-First / Stale-While-Revalidate.
+ *  - Live FX APIs: Network-First with cached rate fallback.
+ *  - Automatic Cache Upgrades & Old Cache Eviction.
  */
 
-const CACHE_NAME = 'ledger-tracker-v2';
+const CACHE_NAME = 'bantay-barya-v2.9.0';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './styles.css',
   './app.js',
+  './modules/data.js',
+  './modules/theme.js',
+  './modules/wallets.js',
+  './modules/debts.js',
+  './modules/bills.js',
+  './modules/reports.js',
   './manifest.json',
   './icons/icon.svg',
-  'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap',
+  './USER_MANUAL.pdf',
+  'https://fonts.googleapis.com/css2?family=Inter+Tight:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,500&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap',
   'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js'
 ];
 
@@ -19,7 +30,7 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(STATIC_ASSETS).catch((err) => {
-        console.warn('Some assets could not be cached immediately during install:', err);
+        console.warn('Some non-critical assets could not be cached immediately during install:', err);
       });
     })
   );
@@ -32,6 +43,7 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         keys.map((key) => {
           if (key !== CACHE_NAME) {
+            console.log('Purging legacy cache bucket:', key);
             return caches.delete(key);
           }
         })
@@ -42,33 +54,63 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Let currency API requests go through network first, fallback to cache if offline
-  if (event.request.url.includes('api.frankfurter.app') || 
-      event.request.url.includes('open.er-api.com') ||
-      event.request.url.includes('currency-api')) {
+  const url = event.request.url;
+
+  // 1. Currency APIs -> Network-first with cache fallback
+  if (url.includes('api.frankfurter.app') ||
+      url.includes('open.er-api.com') ||
+      url.includes('currency-api')) {
     event.respondWith(
-      fetch(event.request).catch(() => caches.match(event.request))
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const copy = networkResponse.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
+          }
+          return networkResponse;
+        })
+        .catch(() => caches.match(event.request))
     );
     return;
   }
 
-  // Cache-first strategy for static assets
+  // 2. Application Logic & Navigation -> Network-First (with Cache Fallback for offline)
+  // Guarantees updated financial calculations reach users immediately when online
+  if (event.request.mode === 'navigate' ||
+      url.endsWith('.html') ||
+      url.endsWith('.js') ||
+      url.endsWith('.css') ||
+      url.includes('/modules/')) {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const copy = networkResponse.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
+          }
+          return networkResponse;
+        })
+        .catch(() => {
+          return caches.match(event.request).then(cached => {
+            if (cached) return cached;
+            if (event.request.mode === 'navigate') return caches.match('./index.html');
+            return null;
+          });
+        })
+    );
+    return;
+  }
+
+  // 3. Static CDN & Media Assets (Fonts, Chart.js, Icons, PDF) -> Cache-First with Network Fetch Fallback
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
+      if (cachedResponse) return cachedResponse;
       return fetch(event.request).then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
+        if (networkResponse && networkResponse.status === 200) {
+          const copy = networkResponse.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
         }
         return networkResponse;
-      }).catch(() => {
-        // Offline fallback
-        return caches.match('./index.html');
       });
     })
   );

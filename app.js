@@ -10,5 +10,5 @@
  *  - Balance Sheet (Statement of Financial Position)
  *  - Auto-Save Engine (5-Minute Interval & On-Demand)
  *  - 7-Digit PIN Security
- *  - Author attribution: Jerome Gotangco (https://github.com/jgotangco)
+ *  - Attribution: Designed and product-directed by Jerome Gotangco. Developed with Google Antigravity / Gemini.
  */

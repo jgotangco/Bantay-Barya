@@ -1,20 +1,29 @@
 /**
  * Bantay Barya - Progressive Web App (PWA) Service Worker
  * Strategy:
- *  - Core App Logic (HTML, JS modules, CSS, icons, manifest): Network-First with Cache Fallback for instant updates & full offline access.
- *  - Static CDN Assets (Google Fonts, Chart.js): Cache-First with Network Fetch Fallback.
+ *  - Core App Logic (HTML, JS modules, CSS): Network-First with Cache Fallback for instant updates & full offline access.
+ *  - Static CDN Assets (Fonts, Chart.js, Icons, PDF): Cache-First / Stale-While-Revalidate.
  *  - Live FX APIs: Network-First with cached rate fallback.
- *  - Modular Pre-caching: Atomic caching for required local assets, resilient non-blocking caching for optional/CDN assets.
- *  - Selective Cache Eviction: Purges only Bantay-Barya/Ledger-Tracker caches while preserving unrelated origin caches.
+ *  - Automatic Cache Upgrades & Old Cache Eviction.
  */
 
-const CACHE_NAME = 'bantay-barya-v2.9.0';
+// Load canonical application version generated from package.json
+try {
+  importScripts('./version.js');
+} catch (e) {
+  // In test environments or when importScripts is not available,
+  // BANTAY_BARYA_VERSION may be injected into globalThis or fallback.
+}
+
+const APP_VERSION = (typeof globalThis !== 'undefined' && globalThis.BANTAY_BARYA_VERSION) || '2.9.0';
+const CACHE_NAME = `bantay-barya-v${APP_VERSION}`;
 
 // 1. Required Local App Shell (Atomic precache: installation MUST fail if any of these are missing)
 const REQUIRED_LOCAL_ASSETS = [
   './',
   './index.html',
   './styles.css',
+  './version.js',
   './app.js',
   './modules/data.js',
   './modules/theme.js',

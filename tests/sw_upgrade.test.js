@@ -84,6 +84,9 @@ class MockCacheStorage {
   }
 }
 
+const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
+const CURRENT_CACHE = `bantay-barya-v${pkg.version}`;
+
 // Helper to instantiate a fresh Service Worker instance with clean mocks
 function createSwEnvironment(options = {}) {
   const failureUrls = options.failureUrls || new Set();
@@ -94,11 +97,17 @@ function createSwEnvironment(options = {}) {
     skipWaiting: () => { mockSelf.skippedWaiting = true; },
     clients: {
       claim: async () => { mockSelf.claimedClients = true; }
+    },
+    importScripts: (scriptPath) => {
+      if (scriptPath === './version.js' || scriptPath === 'version.js') {
+        const vCode = fs.readFileSync(path.join(__dirname, '..', 'version.js'), 'utf8');
+        new Function('globalThis', vCode)(globalThis);
+      }
     }
   };
 
   const swCode = fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8');
-  const initSw = new Function('self', 'caches', 'fetch', swCode);
+  const initSw = new Function('self', 'caches', 'fetch', 'importScripts', swCode);
   const mockFetch = options.fetch || (async (req) => {
     const url = typeof req === 'string' ? req : req.url;
     return {
@@ -109,7 +118,7 @@ function createSwEnvironment(options = {}) {
     };
   });
 
-  initSw(mockSelf, mockCaches, mockFetch);
+  initSw(mockSelf, mockCaches, mockFetch, mockSelf.importScripts);
 
   return { mockSelf, mockCaches, listeners };
 }
@@ -172,8 +181,9 @@ async function runAll() {
 
     await installPromise; // Must resolve without throwing
 
-    const cache = await mockCaches.open('bantay-barya-v2.9.0');
+    const cache = await mockCaches.open(CURRENT_CACHE);
     assert.ok(await cache.match('./index.html'), 'Core index.html must be cached');
+    assert.ok(await cache.match('./version.js'), 'Core version.js must be cached');
     assert.ok(await cache.match('./modules/wallets.js'), 'Core wallets.js must be cached');
     assert.ok(await cache.match('./modules/bills.js'), 'Core bills.js must be cached');
     assert.ok(await cache.match('./modules/debts.js'), 'Core debts.js must be cached');
@@ -192,9 +202,10 @@ async function runAll() {
 
     await installPromise; // Must resolve cleanly
 
-    const cache = await mockCaches.open('bantay-barya-v2.9.0');
+    const cache = await mockCaches.open(CURRENT_CACHE);
     assert.ok(await cache.match('./modules/data.js'));
     assert.ok(await cache.match('./app.js'));
+    assert.ok(await cache.match('./version.js'));
   });
 
   console.log('\n--- 2. Selective Cache Eviction on Activation ---');
@@ -206,7 +217,7 @@ async function runAll() {
     await mockCaches.open('ledger-tracker-v2');
     await mockCaches.open('ledger-tracker-v1');
     await mockCaches.open('bantay-barya-v2.8.0');
-    await mockCaches.open('bantay-barya-v2.9.0');
+    await mockCaches.open(CURRENT_CACHE);
 
     let activatePromise = null;
     listeners['activate']({
@@ -218,7 +229,7 @@ async function runAll() {
     assert.ok(!remainingKeys.includes('ledger-tracker-v2'), 'Must purge legacy ledger-tracker-v2');
     assert.ok(!remainingKeys.includes('ledger-tracker-v1'), 'Must purge legacy ledger-tracker-v1');
     assert.ok(!remainingKeys.includes('bantay-barya-v2.8.0'), 'Must purge older version bantay-barya-v2.8.0');
-    assert.ok(remainingKeys.includes('bantay-barya-v2.9.0'), 'Must retain current v2.9.0 bucket');
+    assert.ok(remainingKeys.includes(CURRENT_CACHE), 'Must retain current version bucket');
     assert.strictEqual(mockSelf.claimedClients, true, 'Must claim clients');
   });
 
@@ -228,7 +239,7 @@ async function runAll() {
     // Pre-populate unrelated third-party caches
     await mockCaches.open('unrelated-app-cache');
     await mockCaches.open('third-party-analytics-v1');
-    await mockCaches.open('bantay-barya-v2.9.0');
+    await mockCaches.open(CURRENT_CACHE);
 
     let activatePromise = null;
     listeners['activate']({
@@ -239,7 +250,7 @@ async function runAll() {
     const remainingKeys = await mockCaches.keys();
     assert.ok(remainingKeys.includes('unrelated-app-cache'), 'Unrelated app cache must NOT be deleted');
     assert.ok(remainingKeys.includes('third-party-analytics-v1'), 'Third-party cache must NOT be deleted');
-    assert.ok(remainingKeys.includes('bantay-barya-v2.9.0'), 'Bantay Barya cache must be preserved');
+    assert.ok(remainingKeys.includes(CURRENT_CACHE), 'Bantay Barya cache must be preserved');
   });
 
   console.log('\n--- 3. Network-First & Offline Fallback Fetch Strategies ---');
@@ -257,7 +268,7 @@ async function runAll() {
     };
 
     const { mockCaches, listeners } = createSwEnvironment({ fetch: mockFetch });
-    const cache = await mockCaches.open('bantay-barya-v2.9.0');
+    const cache = await mockCaches.open(CURRENT_CACHE);
     await cache.put('./modules/debts.js', { status: 200, url: './modules/debts.js', body: 'old-cached-content' });
 
     let fetchResponsePromise = null;
@@ -278,7 +289,7 @@ async function runAll() {
     };
 
     const { mockCaches, listeners } = createSwEnvironment({ fetch: offlineFetch });
-    const cache = await mockCaches.open('bantay-barya-v2.9.0');
+    const cache = await mockCaches.open(CURRENT_CACHE);
     await cache.put('https://example.com/modules/debts.js', {
       status: 200,
       url: 'https://example.com/modules/debts.js',
@@ -302,7 +313,7 @@ async function runAll() {
     };
 
     const { mockCaches, listeners } = createSwEnvironment({ fetch: offlineFetch });
-    const cache = await mockCaches.open('bantay-barya-v2.9.0');
+    const cache = await mockCaches.open(CURRENT_CACHE);
     await cache.put('./index.html', {
       status: 200,
       url: './index.html',

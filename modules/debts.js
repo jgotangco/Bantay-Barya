@@ -54,11 +54,24 @@
   }
 
   /**
-   * Helper: Informational Annualized Nominal Rate (EIR % p.a.) derived strictly from monthlyRate.
+   * Helper: Nominal Annualized Rate (monthly rate × 12).
+   * Note: This is a simple nominal annualized rate, NOT a compounded Effective Interest Rate (EIR).
    */
-  function getDebtEirInformational(debt) {
+  function getDebtNominalAnnualRate(debt) {
     return getDebtMonthlyRate(debt) * 12;
   }
+
+  /**
+   * Helper: Compounded Effective Annual Rate (EAR / EIR % p.a.).
+   * Formula: ((1 + monthlyRate / 100)^12 - 1) * 100
+   */
+  function getDebtEffectiveAnnualRate(debt) {
+    const m = getDebtMonthlyRate(debt) / 100;
+    return (Math.pow(1 + m, 12) - 1) * 100;
+  }
+
+  // Alias for backward compatibility
+  const getDebtEirInformational = getDebtNominalAnnualRate;
 
   /**
    * Helper: Calculates one month's interest according to the debt's interest method.
@@ -99,7 +112,7 @@
     });
 
     const weightedMonthlyRate = totalDebt > 0 ? (weightedMonthlySum / totalDebt) : 0;
-    const weightedApr = weightedMonthlyRate * 12;
+    const weightedNominalAnnual = weightedMonthlyRate * 12;
 
     const totalDebtsVal = document.getElementById('totalDebtsKpiVal');
     const weightedAprVal = document.getElementById('weightedAprKpiVal');
@@ -109,7 +122,7 @@
 
     if (totalDebtsVal) totalDebtsVal.textContent = formatCurrency(totalDebt);
     if (weightedAprVal) weightedAprVal.textContent = `${weightedMonthlyRate.toFixed(2)}% / mo`;
-    if (weightedMonthlySub) weightedMonthlySub.textContent = `~${weightedApr.toFixed(2)}% EIR p.a. (info)`;
+    if (weightedMonthlySub) weightedMonthlySub.textContent = `Nominal: ~${weightedNominalAnnual.toFixed(2)}% p.a. (monthly rate × 12)`;
     if (totalMinPayVal) totalMinPayVal.textContent = formatCurrency(totalMinPay);
     if (monthlyIntCostVal) monthlyIntCostVal.textContent = formatCurrency(totalInterestCost);
 
@@ -153,7 +166,7 @@
       const icon = d.icon || getDebtIcon(d.type);
       const typeLabel = getDebtTypeLabel(d.type);
       const monthlyRate = getDebtMonthlyRate(d);
-      const eir = monthlyRate * 12;
+      const nominal = monthlyRate * 12;
       const method = d.interestMethod || 'diminishing';
       const methodLabel = method === 'flat' ? 'Flat Add-on' : 'Diminishing';
       const monthlyInt = calculateMonthlyInterest(d);
@@ -178,7 +191,7 @@
           </td>
           <td class="text-center font-mono" style="font-weight: 600;">
             <div>${monthlyRate.toFixed(2)}%/mo</div>
-            <small style="font-size: 0.72rem; color: var(--text-muted);">${methodLabel} (~${eir.toFixed(1)}% EIR)</small>
+            <small style="font-size: 0.72rem; color: var(--text-muted);">${methodLabel} (~${nominal.toFixed(1)}% nominal p.a.)</small>
           </td>
           <td class="text-right font-mono">
             ${formatCurrency(d.minPayment)}
@@ -232,7 +245,7 @@
       originalPrincipal: cleanOrigPrincipal,
       interestMethod: cleanMethod,
       monthlyRate: cleanMonthly,
-      apr: cleanMonthly * 12, // Informational
+      apr: cleanMonthly * 12, // Informational nominal
       minPayment: Math.max(0, parseFloat(minPayment) || 0),
       dueDate: (dueDate || '').trim(),
       notes: (notes || '').trim(),
@@ -266,7 +279,7 @@
     debt.originalPrincipal = cleanOrigPrincipal;
     debt.interestMethod = cleanMethod;
     debt.monthlyRate = cleanMonthly;
-    debt.apr = cleanMonthly * 12; // Informational
+    debt.apr = cleanMonthly * 12; // Informational nominal
     debt.minPayment = Math.max(0, parseFloat(minPayment) || 0);
     debt.dueDate = (dueDate !== undefined ? dueDate : debt.dueDate).trim();
     debt.notes = (notes !== undefined ? notes : debt.notes).trim();
@@ -296,7 +309,7 @@
     if (!debt) return;
 
     const monthly = getDebtMonthlyRate(debt);
-    const eir = monthly * 12;
+    const nominal = monthly * 12;
     const origPrincipal = debt.originalPrincipal !== undefined ? debt.originalPrincipal : debt.balance;
     const method = debt.interestMethod || 'diminishing';
 
@@ -318,7 +331,7 @@
     if (origInput) origInput.value = origPrincipal;
     if (methodInput) methodInput.value = method;
     if (monthlyInput) monthlyInput.value = monthly.toFixed(2);
-    if (eirDisplay) eirDisplay.value = eir.toFixed(2);
+    if (eirDisplay) eirDisplay.value = nominal.toFixed(2);
     if (minPayInput) minPayInput.value = debt.minPayment;
     if (dueInput) dueInput.value = debt.dueDate || '';
 
@@ -755,7 +768,7 @@
       const isChecked = state.selectedSimDebtIds.includes(d.id);
       const icon = d.icon || getDebtIcon(d.type);
       const monthlyRate = getDebtMonthlyRate(d);
-      const eir = monthlyRate * 12;
+      const nominal = monthlyRate * 12;
       const method = d.interestMethod || 'diminishing';
       const methodLabel = method === 'flat' ? 'Flat' : 'Dim';
       const bal = parseFloat(d.balance) || 0;
@@ -774,7 +787,7 @@
               <span class="sim-debt-check-rate font-mono">${monthlyRate.toFixed(2)}%/mo (${methodLabel})</span>
             </div>
             <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.1rem;">
-              Min: <strong class="font-mono">${formatCurrency(minPay)}/mo</strong> • ~${eir.toFixed(1)}% EIR
+              Min: <strong class="font-mono">${formatCurrency(minPay)}/mo</strong> • ~${nominal.toFixed(1)}% nominal p.a.
             </div>
           </div>
         </label>
@@ -1008,7 +1021,7 @@
       if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Deselected all debts.', 'info');
     });
 
-    // Auto-derive informational EIR on monthly rate input
+    // Auto-derive informational nominal annual rate on monthly rate input
     const newDebtMonthlyRate = document.getElementById('newDebtMonthlyRate');
     const newDebtApr = document.getElementById('newDebtApr');
     if (newDebtMonthlyRate && newDebtApr) {
@@ -1044,7 +1057,7 @@
       if (newDebtApr) newDebtApr.value = '36.00';
       const nameInput = document.getElementById('newDebtName');
       if (nameInput && !nameInput.value) nameInput.value = 'Credit Card (BPI/BDO/Citi)';
-      if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Applied Philippine Credit Card Preset (3.0% / mo diminishing | 36.0% EIR)', 'info');
+      if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Applied Philippine Credit Card Preset (3.0% / mo diminishing | 36.0% nominal p.a.)', 'info');
     });
 
     document.getElementById('presetAutoLoanBtn')?.addEventListener('click', () => {
@@ -1055,7 +1068,7 @@
       if (newDebtApr) newDebtApr.value = '8.50';
       const nameInput = document.getElementById('newDebtName');
       if (nameInput && !nameInput.value) nameInput.value = 'Auto Loan (Bank Chattel)';
-      if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Applied Philippine Auto Loan Preset (0.71%/mo flat add-on | ~8.5% EIR)', 'info');
+      if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Applied Philippine Auto Loan Preset (0.71%/mo flat add-on | ~8.5% nominal p.a.)', 'info');
     });
 
     document.getElementById('presetMortgageBtn')?.addEventListener('click', () => {
@@ -1066,7 +1079,7 @@
       if (newDebtApr) newDebtApr.value = '6.75';
       const nameInput = document.getElementById('newDebtName');
       if (nameInput && !nameInput.value) nameInput.value = 'Home Mortgage (Bank Fixed)';
-      if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Applied Philippine Home Mortgage Preset (0.56%/mo diminishing | ~6.75% EIR)', 'info');
+      if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Applied Philippine Home Mortgage Preset (0.56%/mo diminishing | ~6.75% nominal p.a.)', 'info');
     });
 
     document.getElementById('presetSssBtn')?.addEventListener('click', () => {
@@ -1077,7 +1090,7 @@
       if (newDebtApr) newDebtApr.value = '10.00';
       const nameInput = document.getElementById('newDebtName');
       if (nameInput && !nameInput.value) nameInput.value = 'SSS / Pag-IBIG Salary Loan';
-      if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Applied SSS / Pag-IBIG Loan Preset (0.83%/mo diminishing | ~10.0% EIR)', 'info');
+      if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Applied SSS / Pag-IBIG Loan Preset (0.83%/mo diminishing | ~10.0% nominal p.a.)', 'info');
     });
 
     const newDebtForm = document.getElementById('newDebtForm');
@@ -1104,16 +1117,6 @@
         document.getElementById('newDebtDueDate').value = '';
       });
     }
-
-    document.getElementById('loadSampleDebtsBtn')?.addEventListener('click', () => {
-      state.debts = JSON.parse(JSON.stringify(SAMPLE_DEBTS));
-      state.selectedSimDebtIds = state.debts.map(d => d.id);
-      if (window.BB_CORE?.saveData) window.BB_CORE.saveData();
-      renderDebtsTable();
-      renderDebtSelectionList();
-      renderSnowballSimulation();
-      if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Loaded sample Home Mortgage, Auto Loan, and Credit Card debts!', 'success');
-    });
 
     const stratSnowballBtn = document.getElementById('stratSnowballBtn');
     const stratAvalancheBtn = document.getElementById('stratAvalancheBtn');
@@ -1225,6 +1228,8 @@
     getDebtIcon,
     getDebtTypeLabel,
     getDebtMonthlyRate,
+    getDebtNominalAnnualRate,
+    getDebtEffectiveAnnualRate,
     getDebtEirInformational,
     calculateMonthlyInterest,
     updateDebtKpis,

@@ -1,5 +1,14 @@
 /**
  * Bantay Barya - Liabilities Tracker, Amortization Engine & Debt Snowball/Avalanche Simulator
+ *
+ * Philippine Monthly-Rate Centric Financial Model:
+ *  - monthlyRate (% / mo) is the authoritative source of truth
+ *  - Diminishing Balance vs. Flat / Add-on interest method support
+ *  - Strict single-spend monthly cash flow invariant in Snowball/Avalanche simulation
+ *  - Genuinely unused cash redirection for final payoff edge cases
+ *  - Exact accounting reconciliation: Ending Balance = Beginning Balance + Interest Paid - Total Paid
+ *  - Negative amortization and impossible payoff scenario detection
+ *  - Deterministic tie-breaking for strategy prioritization
  */
 (function (window) {
   'use strict';
@@ -29,25 +38,68 @@
     return map[type] || 'Debt';
   }
 
+  /**
+   * Helper: Extracts authoritative monthly interest rate (% / mo) with backward compatibility.
+   * If debt.monthlyRate is defined, it is used. If only legacy debt.apr exists, it is converted as apr / 12.
+   */
+  function getDebtMonthlyRate(debt) {
+    if (!debt) return 0;
+    if (debt.monthlyRate !== undefined && debt.monthlyRate !== null && !isNaN(parseFloat(debt.monthlyRate))) {
+      return Math.max(0, parseFloat(debt.monthlyRate));
+    }
+    if (debt.apr !== undefined && debt.apr !== null && !isNaN(parseFloat(debt.apr))) {
+      return Math.max(0, parseFloat(debt.apr) / 12);
+    }
+    return 0;
+  }
+
+  /**
+   * Helper: Informational Annualized Nominal Rate (EIR % p.a.) derived strictly from monthlyRate.
+   */
+  function getDebtEirInformational(debt) {
+    return getDebtMonthlyRate(debt) * 12;
+  }
+
+  /**
+   * Helper: Calculates one month's interest according to the debt's interest method.
+   *  - Diminishing Balance: currentBalance * (monthlyRate / 100)
+   *  - Flat / Add-on: originalPrincipal * (monthlyRate / 100)
+   */
+  function calculateMonthlyInterest(debt, currentBalance = null) {
+    const bal = Math.max(0, parseFloat(currentBalance !== null ? currentBalance : debt.balance) || 0);
+    if (bal <= 0) return 0;
+
+    const monthlyRate = getDebtMonthlyRate(debt);
+    const method = debt.interestMethod || 'diminishing';
+
+    if (method === 'flat') {
+      const origPrincipal = Math.max(0, parseFloat(debt.originalPrincipal !== undefined && debt.originalPrincipal !== null ? debt.originalPrincipal : bal) || 0);
+      return origPrincipal * (monthlyRate / 100);
+    }
+
+    // Default: diminishing balance
+    return bal * (monthlyRate / 100);
+  }
+
   function updateDebtKpis() {
     let totalDebt = 0;
     let totalMinPay = 0;
     let totalInterestCost = 0;
-    let weightedAprSum = 0;
+    let weightedMonthlySum = 0;
 
     state.debts.forEach(d => {
       const bal = parseFloat(d.balance) || 0;
-      const apr = parseFloat(d.apr) || 0;
+      const monthlyRate = getDebtMonthlyRate(d);
       const minP = parseFloat(d.minPayment) || 0;
 
       totalDebt += bal;
       totalMinPay += minP;
-      totalInterestCost += (bal * (apr / 100)) / 12;
-      weightedAprSum += bal * apr;
+      totalInterestCost += calculateMonthlyInterest(d, bal);
+      weightedMonthlySum += bal * monthlyRate;
     });
 
-    const weightedApr = totalDebt > 0 ? (weightedAprSum / totalDebt) : 0;
-    const weightedMonthlyRate = weightedApr / 12;
+    const weightedMonthlyRate = totalDebt > 0 ? (weightedMonthlySum / totalDebt) : 0;
+    const weightedApr = weightedMonthlyRate * 12;
 
     const totalDebtsVal = document.getElementById('totalDebtsKpiVal');
     const weightedAprVal = document.getElementById('weightedAprKpiVal');
@@ -56,8 +108,8 @@
     const monthlyIntCostVal = document.getElementById('monthlyInterestCostVal');
 
     if (totalDebtsVal) totalDebtsVal.textContent = formatCurrency(totalDebt);
-    if (weightedAprVal) weightedAprVal.textContent = `${weightedApr.toFixed(2)}% EIR`;
-    if (weightedMonthlySub) weightedMonthlySub.textContent = `${weightedMonthlyRate.toFixed(2)}% / mo`;
+    if (weightedAprVal) weightedAprVal.textContent = `${weightedMonthlyRate.toFixed(2)}% / mo`;
+    if (weightedMonthlySub) weightedMonthlySub.textContent = `~${weightedApr.toFixed(2)}% EIR p.a. (info)`;
     if (totalMinPayVal) totalMinPayVal.textContent = formatCurrency(totalMinPay);
     if (monthlyIntCostVal) monthlyIntCostVal.textContent = formatCurrency(totalInterestCost);
 
@@ -100,9 +152,11 @@
     state.debts.forEach(d => {
       const icon = d.icon || getDebtIcon(d.type);
       const typeLabel = getDebtTypeLabel(d.type);
-      const eir = parseFloat(d.apr) || 0;
-      const monthlyRate = d.monthlyRate !== undefined ? parseFloat(d.monthlyRate) : (eir / 12);
-      const monthlyInt = ((parseFloat(d.balance) || 0) * (eir / 1200));
+      const monthlyRate = getDebtMonthlyRate(d);
+      const eir = monthlyRate * 12;
+      const method = d.interestMethod || 'diminishing';
+      const methodLabel = method === 'flat' ? 'Flat Add-on' : 'Diminishing';
+      const monthlyInt = calculateMonthlyInterest(d);
 
       html += `
         <tr data-debt-id="${d.id}">
@@ -120,15 +174,16 @@
           </td>
           <td class="text-right font-mono debit-text" style="font-weight: 700;">
             ${formatCurrency(d.balance)}
+            ${method === 'flat' && d.originalPrincipal ? `<div style="font-size: 0.7rem; color: var(--text-muted);">Orig: ${formatCurrency(d.originalPrincipal)}</div>` : ''}
           </td>
           <td class="text-center font-mono" style="font-weight: 600;">
             <div>${monthlyRate.toFixed(2)}%/mo</div>
-            <small style="font-size: 0.72rem; color: var(--text-muted);">${eir.toFixed(2)}% EIR</small>
+            <small style="font-size: 0.72rem; color: var(--text-muted);">${methodLabel} (~${eir.toFixed(1)}% EIR)</small>
           </td>
           <td class="text-right font-mono">
             ${formatCurrency(d.minPayment)}
           </td>
-          <td class="text-right font-mono debit-text" title="Monthly interest accrual (${monthlyRate.toFixed(2)}%/mo)">
+          <td class="text-right font-mono debit-text" title="${methodLabel} interest: ${monthlyRate.toFixed(2)}%/mo">
             ${formatCurrency(monthlyInt)}
           </td>
           <td class="text-right">
@@ -157,30 +212,27 @@
     tableBody.innerHTML = html;
   }
 
-  function createDebt(name, type, balance, monthlyRate, apr, minPayment, dueDate, notes) {
+  function createDebt(name, type, balance, originalPrincipal, interestMethod, monthlyRate, minPayment, dueDate, notes) {
     const cleanName = (name || '').trim();
     if (!cleanName) return;
 
-    let cleanApr = parseFloat(apr);
-    let cleanMonthly = parseFloat(monthlyRate);
-
-    if (isNaN(cleanApr) && !isNaN(cleanMonthly)) {
-      cleanApr = cleanMonthly * 12;
-    } else if (isNaN(cleanMonthly) && !isNaN(cleanApr)) {
-      cleanMonthly = cleanApr / 12;
-    } else if (isNaN(cleanApr) && isNaN(cleanMonthly)) {
-      cleanApr = 0;
-      cleanMonthly = 0;
-    }
+    const cleanMonthly = Math.max(0, parseFloat(monthlyRate) || 0);
+    const cleanBalance = Math.max(0, parseFloat(balance) || 0);
+    const cleanOrigPrincipal = (originalPrincipal !== undefined && originalPrincipal !== '' && !isNaN(parseFloat(originalPrincipal)))
+      ? Math.max(0, parseFloat(originalPrincipal))
+      : cleanBalance;
+    const cleanMethod = (interestMethod === 'flat' || interestMethod === 'diminishing') ? interestMethod : 'diminishing';
 
     const newDebt = {
       id: 'debt_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
       name: cleanName,
       type: type || 'other',
       icon: getDebtIcon(type),
-      balance: Math.max(0, parseFloat(balance) || 0),
-      monthlyRate: Math.max(0, cleanMonthly),
-      apr: Math.max(0, cleanApr),
+      balance: cleanBalance,
+      originalPrincipal: cleanOrigPrincipal,
+      interestMethod: cleanMethod,
+      monthlyRate: cleanMonthly,
+      apr: cleanMonthly * 12, // Informational
       minPayment: Math.max(0, parseFloat(minPayment) || 0),
       dueDate: (dueDate || '').trim(),
       notes: (notes || '').trim(),
@@ -196,25 +248,25 @@
     }
   }
 
-  function editDebt(id, name, type, balance, monthlyRate, apr, minPayment, dueDate, notes) {
+  function editDebt(id, name, type, balance, originalPrincipal, interestMethod, monthlyRate, minPayment, dueDate, notes) {
     const debt = state.debts.find(d => d.id === id);
     if (!debt) return;
 
-    let cleanApr = parseFloat(apr);
-    let cleanMonthly = parseFloat(monthlyRate);
-
-    if (isNaN(cleanApr) && !isNaN(cleanMonthly)) {
-      cleanApr = cleanMonthly * 12;
-    } else if (isNaN(cleanMonthly) && !isNaN(cleanApr)) {
-      cleanMonthly = cleanApr / 12;
-    }
+    const cleanMonthly = Math.max(0, parseFloat(monthlyRate) || 0);
+    const cleanBalance = Math.max(0, parseFloat(balance) || 0);
+    const cleanOrigPrincipal = (originalPrincipal !== undefined && originalPrincipal !== '' && !isNaN(parseFloat(originalPrincipal)))
+      ? Math.max(0, parseFloat(originalPrincipal))
+      : cleanBalance;
+    const cleanMethod = (interestMethod === 'flat' || interestMethod === 'diminishing') ? interestMethod : (debt.interestMethod || 'diminishing');
 
     debt.name = (name || debt.name).trim();
     debt.type = type || debt.type;
     debt.icon = getDebtIcon(debt.type);
-    debt.balance = Math.max(0, parseFloat(balance) || 0);
-    if (!isNaN(cleanMonthly)) debt.monthlyRate = Math.max(0, cleanMonthly);
-    if (!isNaN(cleanApr)) debt.apr = Math.max(0, cleanApr);
+    debt.balance = cleanBalance;
+    debt.originalPrincipal = cleanOrigPrincipal;
+    debt.interestMethod = cleanMethod;
+    debt.monthlyRate = cleanMonthly;
+    debt.apr = cleanMonthly * 12; // Informational
     debt.minPayment = Math.max(0, parseFloat(minPayment) || 0);
     debt.dueDate = (dueDate !== undefined ? dueDate : debt.dueDate).trim();
     debt.notes = (notes !== undefined ? notes : debt.notes).trim();
@@ -243,18 +295,32 @@
     const debt = state.debts.find(d => d.id === id);
     if (!debt) return;
 
-    const eir = parseFloat(debt.apr) || 0;
-    const monthly = debt.monthlyRate !== undefined ? parseFloat(debt.monthlyRate) : (eir / 12);
+    const monthly = getDebtMonthlyRate(debt);
+    const eir = monthly * 12;
+    const origPrincipal = debt.originalPrincipal !== undefined ? debt.originalPrincipal : debt.balance;
+    const method = debt.interestMethod || 'diminishing';
 
-    document.getElementById('editDebtId').value = debt.id;
-    document.getElementById('editDebtName').value = debt.name;
-    document.getElementById('editDebtType').value = debt.type;
-    document.getElementById('editDebtBalance').value = debt.balance;
-    const monthlyRateInput = document.getElementById('editDebtMonthlyRate');
-    if (monthlyRateInput) monthlyRateInput.value = monthly.toFixed(2);
-    document.getElementById('editDebtApr').value = eir.toFixed(2);
-    document.getElementById('editDebtMinPay').value = debt.minPayment;
-    document.getElementById('editDebtDueDate').value = debt.dueDate || '';
+    const idInput = document.getElementById('editDebtId');
+    const nameInput = document.getElementById('editDebtName');
+    const typeInput = document.getElementById('editDebtType');
+    const balInput = document.getElementById('editDebtBalance');
+    const origInput = document.getElementById('editDebtOrigPrincipal');
+    const methodInput = document.getElementById('editDebtInterestMethod');
+    const monthlyInput = document.getElementById('editDebtMonthlyRate');
+    const eirDisplay = document.getElementById('editDebtApr');
+    const minPayInput = document.getElementById('editDebtMinPay');
+    const dueInput = document.getElementById('editDebtDueDate');
+
+    if (idInput) idInput.value = debt.id;
+    if (nameInput) nameInput.value = debt.name;
+    if (typeInput) typeInput.value = debt.type;
+    if (balInput) balInput.value = debt.balance;
+    if (origInput) origInput.value = origPrincipal;
+    if (methodInput) methodInput.value = method;
+    if (monthlyInput) monthlyInput.value = monthly.toFixed(2);
+    if (eirDisplay) eirDisplay.value = eir.toFixed(2);
+    if (minPayInput) minPayInput.value = debt.minPayment;
+    if (dueInput) dueInput.value = debt.dueDate || '';
 
     document.getElementById('editDebtModal')?.classList.add('active');
   }
@@ -353,76 +419,167 @@
     }
   }
 
-  function runAmortizationSimulation(debtsList, strategy, extraMonthly = 0, lumpSum = 0) {
+  /**
+   * Deterministic Simulation Engine:
+   * Strictly enforces that money is spent exactly once per month.
+   * Uses monthlyRate (% / mo) as the authoritative rate input.
+   * Tracks unused cash from final minimum payments for same-month redirection.
+   * Detects impossible / negative amortization payoff horizons.
+   */
+  function runAmortizationSimulation(debtsList, strategy = 'snowball', extraMonthly = 0, lumpSum = 0) {
     if (!debtsList || debtsList.length === 0) {
-      return { totalMonths: 0, totalInterest: 0, debtFreeDate: 'Debt Free Today', payoffRoadmap: [], schedule: [] };
+      return {
+        totalMonths: 0,
+        totalInterest: 0,
+        totalPaid: 0,
+        isPayoffPossible: true,
+        impossibleReason: '',
+        debtFreeDate: 'Debt Free Today',
+        payoffRoadmap: [],
+        schedule: []
+      };
     }
 
-    const debts = debtsList.map(d => ({
-      id: d.id,
-      name: d.name,
-      icon: d.icon || getDebtIcon(d.type),
-      apr: parseFloat(d.apr) || 0,
-      minPayment: parseFloat(d.minPayment) || 0,
-      balance: Math.max(0, parseFloat(d.balance) || 0),
-      payoffMonth: null
-    })).filter(d => d.balance > 0);
+    // Clone working array with backward-compatible normalization
+    const debts = debtsList.map(d => {
+      const bal = Math.max(0, parseFloat(d.balance) || 0);
+      const monthlyRate = getDebtMonthlyRate(d);
+      const method = d.interestMethod || 'diminishing';
+      const origPrincipal = Math.max(0, parseFloat(d.originalPrincipal !== undefined && d.originalPrincipal !== null ? d.originalPrincipal : bal) || 0);
+
+      return {
+        id: String(d.id),
+        name: d.name || 'Debt',
+        icon: d.icon || getDebtIcon(d.type),
+        balance: bal,
+        originalPrincipal: origPrincipal,
+        interestMethod: method,
+        monthlyRate: monthlyRate,
+        apr: monthlyRate * 12,
+        minPayment: Math.max(0, parseFloat(d.minPayment) || 0),
+        payoffMonth: null
+      };
+    }).filter(d => d.balance > 0);
 
     if (debts.length === 0) {
-      return { totalMonths: 0, totalInterest: 0, debtFreeDate: 'Debt Free Today', payoffRoadmap: [], schedule: [] };
+      return {
+        totalMonths: 0,
+        totalInterest: 0,
+        totalPaid: 0,
+        isPayoffPossible: true,
+        impossibleReason: '',
+        debtFreeDate: 'Debt Free Today',
+        payoffRoadmap: [],
+        schedule: []
+      };
     }
 
     const schedule = [];
     const payoffRoadmap = [];
     let totalInterestPaidAll = 0;
+    let totalAmountPaidAll = 0;
     let currentMonth = 0;
-    const maxMonths = 480;
+    const maxMonths = 480; // 40 years safety horizon
+    const startDate = new Date();
 
+    // 1. Process Initial Lump-Sum Advance Payment (Month 0 / Day 1)
     if (lumpSum > 0) {
       let remainingLump = lumpSum;
       const sortedForLump = [...debts].sort((a, b) => {
-        if (strategy === 'avalanche') return b.apr - a.apr;
-        return a.balance - b.balance;
+        if (strategy === 'avalanche') {
+          if (b.monthlyRate !== a.monthlyRate) return b.monthlyRate - a.monthlyRate;
+          if (a.balance !== b.balance) return a.balance - b.balance;
+          return a.id.localeCompare(b.id);
+        }
+        // Snowball: Lowest balance first
+        if (a.balance !== b.balance) return a.balance - b.balance;
+        if (b.monthlyRate !== a.monthlyRate) return b.monthlyRate - a.monthlyRate;
+        return a.id.localeCompare(b.id);
       });
 
       for (const d of sortedForLump) {
-        if (remainingLump <= 0) break;
+        if (remainingLump <= 0.0001) break;
         const deduction = Math.min(d.balance, remainingLump);
         d.balance -= deduction;
         remainingLump -= deduction;
+        totalAmountPaidAll += deduction;
+
+        if (d.balance <= 0.001 && d.payoffMonth === null) {
+          d.balance = 0;
+          d.payoffMonth = 0;
+          payoffRoadmap.push({
+            id: d.id,
+            name: d.name,
+            icon: d.icon,
+            month: 0,
+            monthStr: 'Lump Sum (Day 1)',
+            freedPayment: d.minPayment
+          });
+        }
       }
     }
 
-    const startDate = new Date();
+    let isPayoffPossible = true;
+    let impossibleReason = '';
 
+    // Main Simulation Month-by-Month Loop
     while (currentMonth < maxMonths) {
-      const activeDebts = debts.filter(d => d.balance > 0);
+      const activeDebts = debts.filter(d => d.balance > 0.001);
       if (activeDebts.length === 0) break;
 
       currentMonth++;
       const monthDate = new Date(startDate.getFullYear(), startDate.getMonth() + currentMonth, 1);
       const monthStr = monthDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 
-      let monthBeginningBal = activeDebts.reduce((sum, d) => sum + d.balance, 0);
+      const monthBeginningBal = activeDebts.reduce((sum, d) => sum + d.balance, 0);
       let monthInterestTotal = 0;
-      let monthPrincipalTotal = 0;
-      let monthMinPaymentTotal = 0;
+      let monthMinPaidTotal = 0;
+      let monthExtraPaidTotal = 0;
+      let monthUnusedCashFromMins = 0;
 
-      activeDebts.forEach(d => {
-        const monthlyRate = (d.apr / 100) / 12;
-        const interest = d.balance * monthlyRate;
-        d.balance += interest;
+      // STEP 1 & 2: Calculate month's interest for active debts
+      const debtMonthSnapshots = activeDebts.map(d => {
+        const interest = d.interestMethod === 'flat'
+          ? d.originalPrincipal * (d.monthlyRate / 100)
+          : d.balance * (d.monthlyRate / 100);
+
         monthInterestTotal += interest;
-        totalInterestPaidAll += interest;
+        const totalDue = d.balance + interest;
+
+        return {
+          debt: d,
+          startBal: d.balance,
+          interest: interest,
+          totalDue: totalDue,
+          minPaid: 0,
+          extraPaid: 0,
+          interestPaid: 0,
+          principalPaid: 0
+        };
       });
 
-      activeDebts.forEach(d => {
-        const pay = Math.min(d.minPayment, d.balance);
-        d.balance -= pay;
-        monthPrincipalTotal += pay;
-        monthMinPaymentTotal += pay;
+      // STEP 3 & 4: Apply scheduled minimum payments & collect genuinely unused cash
+      debtMonthSnapshots.forEach(snap => {
+        const d = snap.debt;
+        const scheduledMin = d.minPayment;
+        const actualMin = Math.min(scheduledMin, snap.totalDue);
+        snap.minPaid = actualMin;
+        monthMinPaidTotal += actualMin;
 
-        if (d.balance <= 0.01 && d.payoffMonth === null) {
+        const unusedCash = scheduledMin - actualMin;
+        if (unusedCash > 0.001) {
+          monthUnusedCashFromMins += unusedCash;
+        }
+
+        // Minimum payment covers interest first, then reduces principal
+        const intPortion = Math.min(snap.interest, actualMin);
+        const prinPortion = actualMin - intPortion;
+        snap.interestPaid = intPortion;
+        snap.principalPaid = prinPortion;
+
+        d.balance = Math.max(0, snap.startBal + snap.interest - actualMin);
+
+        if (d.balance <= 0.001 && d.payoffMonth === null) {
           d.balance = 0;
           d.payoffMonth = currentMonth;
           payoffRoadmap.push({
@@ -436,61 +593,121 @@
         }
       });
 
-      const freedFromPaid = debts
-        .filter(d => d.payoffMonth !== null && d.payoffMonth <= currentMonth)
+      // STEP 5: Determine strategy budget for extra Snowball / Avalanche payments
+      // INVARIANT: Debts paid off in previous months (< currentMonth) roll over their FULL minPayment.
+      // Debts paid off in this month (currentMonth) contribute ONLY their genuinely unused cash (monthUnusedCashFromMins).
+      const freedFromPriorMonths = debts
+        .filter(d => d.payoffMonth !== null && d.payoffMonth < currentMonth)
         .reduce((sum, d) => sum + d.minPayment, 0);
 
-      let availableSnowball = extraMonthly + freedFromPaid;
+      let availableSnowball = extraMonthly + freedFromPriorMonths + monthUnusedCashFromMins;
 
-      const remainingDebts = debts.filter(d => d.balance > 0);
+      // STEP 6: Sort remaining active debts by strategy with deterministic tie-breaking
+      const remainingDebts = debts.filter(d => d.balance > 0.001);
       remainingDebts.sort((a, b) => {
-        if (strategy === 'avalanche') return b.apr - a.apr;
-        return a.balance - b.balance;
+        if (strategy === 'avalanche') {
+          // 1st priority: highest monthly rate
+          if (b.monthlyRate !== a.monthlyRate) return b.monthlyRate - a.monthlyRate;
+          // 2nd priority: lowest balance
+          if (a.balance !== b.balance) return a.balance - b.balance;
+          // 3rd priority: deterministic ID
+          return a.id.localeCompare(b.id);
+        }
+        // Snowball
+        // 1st priority: lowest remaining balance
+        if (a.balance !== b.balance) return a.balance - b.balance;
+        // 2nd priority: highest monthly rate
+        if (b.monthlyRate !== a.monthlyRate) return b.monthlyRate - a.monthlyRate;
+        // 3rd priority: deterministic ID
+        return a.id.localeCompare(b.id);
       });
 
+      // Apply extra payments to targeted debts
       for (const target of remainingDebts) {
-        if (availableSnowball <= 0) break;
-        const extraPay = Math.min(target.balance, availableSnowball);
-        target.balance -= extraPay;
-        availableSnowball -= extraPay;
-        monthPrincipalTotal += extraPay;
+        if (availableSnowball <= 0.001) break;
+        const snap = debtMonthSnapshots.find(s => s.debt.id === target.id);
+        if (!snap) continue;
 
-        if (target.balance <= 0.01 && target.payoffMonth === null) {
-          target.balance = 0;
-          target.payoffMonth = currentMonth;
-          payoffRoadmap.push({
-            id: target.id,
-            name: target.name,
-            icon: target.icon,
-            month: currentMonth,
-            monthStr: monthStr,
-            freedPayment: target.minPayment
-          });
+        const currentOwed = target.balance; // balance already accounts for min payment
+        const extraToApply = Math.min(availableSnowball, currentOwed);
+
+        if (extraToApply > 0) {
+          snap.extraPaid += extraToApply;
+          monthExtraPaidTotal += extraToApply;
+          availableSnowball -= extraToApply;
+          target.balance -= extraToApply;
+
+          // Extra payment goes directly to reducing remaining principal
+          snap.principalPaid += extraToApply;
+
+          if (target.balance <= 0.001 && target.payoffMonth === null) {
+            target.balance = 0;
+            target.payoffMonth = currentMonth;
+            payoffRoadmap.push({
+              id: target.id,
+              name: target.name,
+              icon: target.icon,
+              month: currentMonth,
+              monthStr: monthStr,
+              freedPayment: target.minPayment
+            });
+          }
         }
       }
 
       const monthEndingBal = debts.reduce((sum, d) => sum + Math.max(0, d.balance), 0);
+      const monthPrincipalReduction = monthBeginningBal - monthEndingBal;
+      const monthTotalPaid = monthMinPaidTotal + monthExtraPaidTotal;
 
-      if (currentMonth <= 120 || currentMonth === maxMonths || monthEndingBal <= 0) {
+      totalInterestPaidAll += monthInterestTotal;
+      totalAmountPaidAll += monthTotalPaid;
+
+      // STEP 7: Record monthly accounting schedule row
+      if (currentMonth <= 120 || currentMonth === maxMonths || monthEndingBal <= 0.001) {
         schedule.push({
           month: currentMonth,
           monthStr: monthStr,
           beginningBal: monthBeginningBal,
-          minPaid: monthMinPaymentTotal,
-          extraPaid: monthPrincipalTotal - monthMinPaymentTotal,
+          minPaid: monthMinPaidTotal,
+          extraPaid: monthExtraPaidTotal,
           interestPaid: monthInterestTotal,
-          principalPaid: monthPrincipalTotal,
+          principalPaid: monthPrincipalReduction,
+          totalPaid: monthTotalPaid,
           endingBal: monthEndingBal
         });
+      }
+
+      // STEP 8: Negative Amortization / Unresolvable Deficit Detection
+      // If ending balance increased or remained unchanged and no extra budget exists to overcome it
+      if (monthEndingBal >= monthBeginningBal - 0.001 && availableSnowball <= 0.001) {
+        isPayoffPossible = false;
+        impossibleReason = 'Monthly payments are insufficient to cover accruing interest (Negative Amortization).';
+        break;
+      }
+    }
+
+    const remainingUnpaid = debts.filter(d => d.balance > 0.001);
+    if (remainingUnpaid.length > 0) {
+      isPayoffPossible = false;
+      if (!impossibleReason) {
+        impossibleReason = `Debts not paid off within ${maxMonths} months (40-year simulation limit). Increase payments.`;
       }
     }
 
     const freeDateObj = new Date(startDate.getFullYear(), startDate.getMonth() + currentMonth, 1);
-    const debtFreeDateStr = currentMonth === 0 ? 'Debt Free Today' : freeDateObj.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    let debtFreeDateStr = 'Debt Free Today';
+    if (!isPayoffPossible) {
+      debtFreeDateStr = 'Unpayable / Negative Amortization ⚠️';
+    } else if (currentMonth > 0) {
+      debtFreeDateStr = freeDateObj.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    }
 
     return {
-      totalMonths: currentMonth,
+      totalMonths: isPayoffPossible ? currentMonth : maxMonths,
       totalInterest: totalInterestPaidAll,
+      totalPaid: totalAmountPaidAll,
+      isPayoffPossible: isPayoffPossible,
+      impossibleReason: impossibleReason,
       debtFreeDate: debtFreeDateStr,
       payoffRoadmap: payoffRoadmap,
       schedule: schedule
@@ -537,8 +754,10 @@
     allDebtsWithBal.forEach(d => {
       const isChecked = state.selectedSimDebtIds.includes(d.id);
       const icon = d.icon || getDebtIcon(d.type);
-      const eir = parseFloat(d.apr) || 0;
-      const monthlyRate = d.monthlyRate !== undefined ? parseFloat(d.monthlyRate) : (eir / 12);
+      const monthlyRate = getDebtMonthlyRate(d);
+      const eir = monthlyRate * 12;
+      const method = d.interestMethod || 'diminishing';
+      const methodLabel = method === 'flat' ? 'Flat' : 'Dim';
       const bal = parseFloat(d.balance) || 0;
       const minPay = parseFloat(d.minPayment) || 0;
 
@@ -552,10 +771,10 @@
             </div>
             <div class="sim-debt-check-meta">
               <span class="sim-debt-check-balance font-mono">${formatCurrency(bal)}</span>
-              <span class="sim-debt-check-rate font-mono">${monthlyRate.toFixed(2)}%/mo | ${eir.toFixed(1)}% EIR</span>
+              <span class="sim-debt-check-rate font-mono">${monthlyRate.toFixed(2)}%/mo (${methodLabel})</span>
             </div>
             <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.1rem;">
-              Min: <strong class="font-mono">${formatCurrency(minPay)}/mo</strong>
+              Min: <strong class="font-mono">${formatCurrency(minPay)}/mo</strong> • ~${eir.toFixed(1)}% EIR
             </div>
           </div>
         </label>
@@ -641,6 +860,54 @@
     const baseline = runAmortizationSimulation(debtsWithBal, 'snowball', 0, 0);
     const simulated = runAmortizationSimulation(debtsWithBal, strategy, extraMonthly, lumpSum);
 
+    // Negative amortization alert
+    if (!simulated.isPayoffPossible) {
+      if (simDebtFreeDate) {
+        simDebtFreeDate.textContent = 'Payoff Impossible ⚠️';
+        simDebtFreeDate.className = 'impact-val font-mono debit-text';
+      }
+      if (simBaselineFreeDate) simBaselineFreeDate.textContent = simulated.impossibleReason || 'Payments < Accruing Interest';
+      if (simTimeSaved) simTimeSaved.textContent = 'Unresolved Deficit';
+      if (simInterestSaved) simInterestSaved.textContent = '—';
+      if (simTotalInterestRemaining) simTotalInterestRemaining.textContent = formatCurrency(simulated.totalInterest);
+      if (simBaselineInterest) simBaselineInterest.textContent = 'Compounding Deficit';
+
+      if (simPayoffRoadmapCards) {
+        simPayoffRoadmapCards.innerHTML = `
+          <div class="callout-box callout-danger" style="grid-column: 1 / -1; padding: 1.5rem; margin: 0;">
+            <strong>⚠️ Negative Amortization / Unresolvable Loan:</strong>
+            <p style="margin-top: 0.35rem; font-size: 0.85rem;">
+              The current scheduled minimum payments are insufficient to cover the monthly interest accrued. The principal balance is increasing rather than decreasing.
+              <br><br>
+              <strong>Recommended Action:</strong> Increase the minimum payment or add extra monthly payments (+₱) to cover monthly interest and initiate principal reduction.
+            </p>
+          </div>
+        `;
+      }
+
+      if (simAmortizationTableBody) {
+        let schedHtml = '';
+        simulated.schedule.slice(0, 30).forEach(row => {
+          schedHtml += `
+            <tr>
+              <td class="font-mono"><strong>${row.monthStr}</strong> (#${row.month})</td>
+              <td class="text-right font-mono">${formatCurrency(row.beginningBal)}</td>
+              <td class="text-right font-mono">${formatCurrency(row.minPaid)}</td>
+              <td class="text-right font-mono credit-text">${row.extraPaid > 0 ? '+' + formatCurrency(row.extraPaid) : '—'}</td>
+              <td class="text-right font-mono debit-text">${formatCurrency(row.interestPaid)}</td>
+              <td class="text-right font-mono debit-text">${row.principalPaid < 0 ? '-' + formatCurrency(Math.abs(row.principalPaid)) : formatCurrency(row.principalPaid)}</td>
+              <td class="text-right font-mono debit-text" style="font-weight: 700;">
+                ${formatCurrency(row.endingBal)} ⚠️
+              </td>
+            </tr>
+          `;
+        });
+        simAmortizationTableBody.innerHTML = schedHtml;
+      }
+      return;
+    }
+
+    // Normal successful payoff
     const monthsSaved = Math.max(0, baseline.totalMonths - simulated.totalMonths);
     const yearsSaved = Math.floor(monthsSaved / 12);
     const remMonthsSaved = monthsSaved % 12;
@@ -651,8 +918,11 @@
 
     const interestSaved = Math.max(0, baseline.totalInterest - simulated.totalInterest);
 
-    if (simDebtFreeDate) simDebtFreeDate.textContent = simulated.debtFreeDate;
-    if (simBaselineFreeDate) simBaselineFreeDate.textContent = `Base: ${baseline.debtFreeDate}`;
+    if (simDebtFreeDate) {
+      simDebtFreeDate.textContent = simulated.debtFreeDate;
+      simDebtFreeDate.className = 'impact-val font-mono credit-text';
+    }
+    if (simBaselineFreeDate) simBaselineFreeDate.textContent = baseline.isPayoffPossible ? `Base: ${baseline.debtFreeDate}` : 'Base: Payoff Impossible';
     if (simTimeSaved) simTimeSaved.textContent = monthsSaved > 0 ? `${timeSavedStr} Earlier` : 'Standard Rate';
     if (simInterestSaved) simInterestSaved.textContent = formatCurrency(interestSaved);
     if (simTotalInterestRemaining) simTotalInterestRemaining.textContent = formatCurrency(simulated.totalInterest);
@@ -738,6 +1008,7 @@
       if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Deselected all debts.', 'info');
     });
 
+    // Auto-derive informational EIR on monthly rate input
     const newDebtMonthlyRate = document.getElementById('newDebtMonthlyRate');
     const newDebtApr = document.getElementById('newDebtApr');
     if (newDebtMonthlyRate && newDebtApr) {
@@ -764,40 +1035,49 @@
       });
     }
 
+    // Presets based on standard Philippine retail rates
     document.getElementById('presetCreditCardBtn')?.addEventListener('click', () => {
       document.getElementById('newDebtType').value = 'credit_card';
+      const methodSel = document.getElementById('newDebtInterestMethod');
+      if (methodSel) methodSel.value = 'diminishing';
       if (newDebtMonthlyRate) newDebtMonthlyRate.value = '3.00';
       if (newDebtApr) newDebtApr.value = '36.00';
       const nameInput = document.getElementById('newDebtName');
-      if (nameInput && !nameInput.value) nameInput.value = 'Credit Card (BDO/BPI/Citi)';
-      if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Applied Philippine Credit Card Preset (3.0% / mo | 36.0% EIR)', 'info');
+      if (nameInput && !nameInput.value) nameInput.value = 'Credit Card (BPI/BDO/Citi)';
+      if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Applied Philippine Credit Card Preset (3.0% / mo diminishing | 36.0% EIR)', 'info');
     });
 
     document.getElementById('presetAutoLoanBtn')?.addEventListener('click', () => {
       document.getElementById('newDebtType').value = 'auto';
+      const methodSel = document.getElementById('newDebtInterestMethod');
+      if (methodSel) methodSel.value = 'flat';
       if (newDebtMonthlyRate) newDebtMonthlyRate.value = '0.71';
       if (newDebtApr) newDebtApr.value = '8.50';
       const nameInput = document.getElementById('newDebtName');
       if (nameInput && !nameInput.value) nameInput.value = 'Auto Loan (Bank Chattel)';
-      if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Applied Philippine Auto Loan Preset (~8.50% EIR | ~0.71%/mo)', 'info');
+      if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Applied Philippine Auto Loan Preset (0.71%/mo flat add-on | ~8.5% EIR)', 'info');
     });
 
     document.getElementById('presetMortgageBtn')?.addEventListener('click', () => {
       document.getElementById('newDebtType').value = 'mortgage';
+      const methodSel = document.getElementById('newDebtInterestMethod');
+      if (methodSel) methodSel.value = 'diminishing';
       if (newDebtMonthlyRate) newDebtMonthlyRate.value = '0.56';
       if (newDebtApr) newDebtApr.value = '6.75';
       const nameInput = document.getElementById('newDebtName');
       if (nameInput && !nameInput.value) nameInput.value = 'Home Mortgage (Bank Fixed)';
-      if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Applied Philippine Home Mortgage Preset (~6.75% EIR | ~0.56%/mo)', 'info');
+      if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Applied Philippine Home Mortgage Preset (0.56%/mo diminishing | ~6.75% EIR)', 'info');
     });
 
     document.getElementById('presetSssBtn')?.addEventListener('click', () => {
       document.getElementById('newDebtType').value = 'personal';
+      const methodSel = document.getElementById('newDebtInterestMethod');
+      if (methodSel) methodSel.value = 'diminishing';
       if (newDebtMonthlyRate) newDebtMonthlyRate.value = '0.83';
       if (newDebtApr) newDebtApr.value = '10.00';
       const nameInput = document.getElementById('newDebtName');
       if (nameInput && !nameInput.value) nameInput.value = 'SSS / Pag-IBIG Salary Loan';
-      if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Applied SSS / Pag-IBIG Loan Preset (~10.00% EIR | ~0.83%/mo)', 'info');
+      if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Applied SSS / Pag-IBIG Loan Preset (0.83%/mo diminishing | ~10.0% EIR)', 'info');
     });
 
     const newDebtForm = document.getElementById('newDebtForm');
@@ -808,16 +1088,18 @@
           document.getElementById('newDebtName').value,
           document.getElementById('newDebtType').value,
           document.getElementById('newDebtBalance').value,
-          document.getElementById('newDebtMonthlyRate')?.value || '',
-          document.getElementById('newDebtApr').value,
+          document.getElementById('newDebtOrigPrincipal')?.value || '',
+          document.getElementById('newDebtInterestMethod')?.value || 'diminishing',
+          document.getElementById('newDebtMonthlyRate')?.value || '0',
           document.getElementById('newDebtMinPay').value,
           document.getElementById('newDebtDueDate').value,
           ''
         );
         document.getElementById('newDebtName').value = '';
         document.getElementById('newDebtBalance').value = '';
+        if (document.getElementById('newDebtOrigPrincipal')) document.getElementById('newDebtOrigPrincipal').value = '';
         if (document.getElementById('newDebtMonthlyRate')) document.getElementById('newDebtMonthlyRate').value = '';
-        document.getElementById('newDebtApr').value = '';
+        if (document.getElementById('newDebtApr')) document.getElementById('newDebtApr').value = '';
         document.getElementById('newDebtMinPay').value = '';
         document.getElementById('newDebtDueDate').value = '';
       });
@@ -852,7 +1134,7 @@
         stratAvalancheBtn.classList.add('active');
         if (stratSnowballBtn) stratSnowballBtn.classList.remove('active');
         renderSnowballSimulation();
-        if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Switched to Debt Avalanche Strategy (Highest EIR % First)!', 'info');
+        if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Switched to Debt Avalanche Strategy (Highest Monthly Rate First)!', 'info');
       });
     }
 
@@ -929,8 +1211,9 @@
           document.getElementById('editDebtName').value,
           document.getElementById('editDebtType').value,
           document.getElementById('editDebtBalance').value,
-          document.getElementById('editDebtMonthlyRate')?.value || '',
-          document.getElementById('editDebtApr').value,
+          document.getElementById('editDebtOrigPrincipal')?.value || '',
+          document.getElementById('editDebtInterestMethod')?.value || 'diminishing',
+          document.getElementById('editDebtMonthlyRate')?.value || '0',
           document.getElementById('editDebtMinPay').value,
           document.getElementById('editDebtDueDate').value
         );
@@ -941,6 +1224,9 @@
   window.BB_DEBTS = {
     getDebtIcon,
     getDebtTypeLabel,
+    getDebtMonthlyRate,
+    getDebtEirInformational,
+    calculateMonthlyInterest,
     updateDebtKpis,
     renderDebtsTable,
     createDebt,

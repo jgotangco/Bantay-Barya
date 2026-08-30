@@ -5,12 +5,17 @@
   "main": "app.js",
   "scripts": {
     "sync-version": "node scripts/sync-version.js",
-    "test": "node tests/version.test.js && node tests/debts.test.js && node tests/bills_date.test.js && node tests/sw_upgrade.test.js && node tests/core_engine.test.js",
+    "test": "node tests/version.test.js && node tests/debts.test.js && node tests/bills_date.test.js && node tests/sw_upgrade.test.js && node tests/core_engine.test.js && node tests/extension_currency.test.js && node tests/pin_security.test.js && node tests/import_validation.test.js && node tests/storage_adapter.test.js && node tests/app_integration_chrome.test.js",
     "test:version": "node tests/version.test.js",
     "test:debts": "node tests/debts.test.js",
     "test:bills": "node tests/bills_date.test.js",
     "test:sw": "node tests/sw_upgrade.test.js",
-    "test:core": "node tests/core_engine.test.js"
+    "test:core": "node tests/core_engine.test.js",
+    "test:currency": "node tests/extension_currency.test.js",
+    "test:security": "node tests/pin_security.test.js",
+    "test:import": "node tests/import_validation.test.js",
+    "test:storage": "node tests/storage_adapter.test.js",
+    "test:integration": "node tests/app_integration_chrome.test.js"
   },
   "keywords": [
     "personal-finance",

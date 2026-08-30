@@ -12,6 +12,9 @@
     LEGACY_KEY_THEME_V6,
     STORAGE_KEY_PIN,
     LEGACY_KEY_PIN_V6,
+    STORAGE_KEY_ENCRYPTED_VAULT,
+    STORAGE_KEY_MIGRATION_STAGING,
+    STORAGE_KEY_THROTTLE,
     CURRENCIES,
     getRelativeDateString
   } = window.BB_DATA;
@@ -81,7 +84,11 @@
   }
 
   function initThemeEngine() {
-    let savedTheme = localStorage.getItem(STORAGE_KEY_THEME) || localStorage.getItem(LEGACY_KEY_THEME_V6) || 'deep_teal';
+    const storageAdapter = window.BB_STORAGE;
+    const getItem = (k) => storageAdapter ? storageAdapter.getItemSync(k) : (typeof localStorage !== 'undefined' ? localStorage.getItem(k) : null);
+    const setItem = (k, v) => storageAdapter ? storageAdapter.setItemSync(k, v) : (typeof localStorage !== 'undefined' ? localStorage.setItem(k, v) : null);
+
+    let savedTheme = getItem(STORAGE_KEY_THEME) || getItem(LEGACY_KEY_THEME_V6) || 'deep_teal';
     savedTheme = normalizeThemeName(savedTheme);
     state.theme = savedTheme;
     const themeSelect = document.getElementById('settingsThemeSelect');
@@ -92,7 +99,7 @@
       themeSelect.addEventListener('change', (e) => {
         const selected = e.target.value;
         state.theme = selected;
-        localStorage.setItem(STORAGE_KEY_THEME, selected);
+        setItem(STORAGE_KEY_THEME, selected);
         applyTheme(selected);
         if (window.BB_WALLETS?.syncActiveSlotPayload) window.BB_WALLETS.syncActiveSlotPayload();
         if (window.BB_CORE?.saveData) window.BB_CORE.saveData();
@@ -290,6 +297,7 @@
   }
 
   function renderAllHeroCharts() {
+    if (typeof Chart === 'undefined') return;
     renderHeroExpensePieChart();
     renderHeroSpendingBufferLineChart();
     renderHeroCashFlowBarChart();
@@ -853,28 +861,88 @@
     });
   }
 
+  let inactivityTimer = null;
+  const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
+
+  function resetInactivityTimer() {
+    if (inactivityTimer) clearTimeout(inactivityTimer);
+    if (!state._isVaultLocked && (window.BB_STORAGE?.hasEncryptedVault() || window.BB_STORAGE?.hasLegacyPlaintextPin())) {
+      inactivityTimer = setTimeout(() => {
+        lockApp();
+        if (window.BB_CORE?.showToast) window.BB_CORE.showToast('App locked due to 15 minutes of inactivity.', 'info');
+      }, INACTIVITY_TIMEOUT_MS);
+    }
+  }
+
+  function setupInactivityListeners() {
+    const events = ['mousemove', 'keydown', 'touchstart', 'pointerdown', 'scroll'];
+    events.forEach(ev => {
+      window.addEventListener(ev, resetInactivityTimer, { passive: true });
+    });
+    resetInactivityTimer();
+  }
+
+  function resetPinBuffer() {
+    enteredPinBuffer = '';
+    const pinHiddenInput = document.getElementById('pinHiddenInput');
+    if (pinHiddenInput) pinHiddenInput.value = '';
+    updatePinDotsUI();
+    const pinError = document.getElementById('pinErrorMessage');
+    if (pinError) pinError.style.display = 'none';
+  }
+
+  function lockApp() {
+    const hasKey = Boolean(state._vaultDerivedKey);
+    const hasSyncVault = window.BB_STORAGE ? (window.BB_STORAGE.hasEncryptedVault() || window.BB_STORAGE.hasLegacyPlaintextPin()) : false;
+    if (!hasKey && !hasSyncVault) {
+      return;
+    }
+    state._isVaultLocked = true;
+    state._vaultDerivedKey = null;
+    if (window.BB_CORE?.stopAutoSaveEngine) window.BB_CORE.stopAutoSaveEngine();
+    resetPinBuffer();
+
+    const pinModal = document.getElementById('pinLockModal');
+    if (pinModal) {
+      pinModal.style.display = 'flex';
+      pinModal.style.opacity = '1';
+      const pinHiddenInput = document.getElementById('pinHiddenInput');
+      if (pinHiddenInput?.focus) setTimeout(() => pinHiddenInput.focus(), 150);
+    }
+    updatePinSettingsUI();
+  }
+
   function initPinSecurity() {
-    const storedPin = localStorage.getItem(STORAGE_KEY_PIN) || localStorage.getItem(LEGACY_KEY_PIN_V6);
+    const isEncrypted = window.BB_STORAGE ? window.BB_STORAGE.hasEncryptedVault() : false;
+    const hasLegacyPin = window.BB_STORAGE ? window.BB_STORAGE.hasLegacyPlaintextPin() : false;
     updatePinSettingsUI();
 
     const pinModal = document.getElementById('pinLockModal');
     const pinHiddenInput = document.getElementById('pinHiddenInput');
-    const pinError = document.getElementById('pinErrorMessage');
     const pinClear = document.getElementById('pinClearKey');
     const pinBack = document.getElementById('pinBackspaceKey');
 
-    if (storedPin && storedPin.length === 7 && pinModal) {
+    const shouldLock = state._isVaultLocked || isEncrypted || hasLegacyPin;
+
+    if (shouldLock && pinModal) {
+      state._isVaultLocked = true;
       pinModal.style.display = 'flex';
-      enteredPinBuffer = '';
-      updatePinDotsUI();
-      if (pinHiddenInput) setTimeout(() => pinHiddenInput.focus(), 200);
-    } else if (pinModal) {
+      resetPinBuffer();
+      checkThrottleStatusUI();
+      if (pinHiddenInput?.focus) setTimeout(() => pinHiddenInput.focus(), 200);
+    } else if (pinModal && !state._isVaultLocked) {
+      state._isVaultLocked = false;
       pinModal.style.display = 'none';
     }
 
     const pinKeys = document.querySelectorAll('.pin-key[data-key]');
     pinKeys.forEach(k => {
       k.addEventListener('click', () => {
+        const throttle = window.BB_CRYPTO?.ThrottlingManager?.checkThrottle(window.BB_STORAGE);
+        if (throttle && throttle.isLocked) {
+          showThrottleError(throttle.remainingSeconds);
+          return;
+        }
         if (enteredPinBuffer.length < 7) {
           enteredPinBuffer += k.getAttribute('data-key');
           updatePinDotsUI();
@@ -884,11 +952,7 @@
     });
 
     if (pinClear) {
-      pinClear.addEventListener('click', () => {
-        enteredPinBuffer = '';
-        updatePinDotsUI();
-        if (pinError) pinError.style.display = 'none';
-      });
+      pinClear.addEventListener('click', resetPinBuffer);
     }
 
     if (pinBack) {
@@ -896,6 +960,7 @@
         if (enteredPinBuffer.length > 0) {
           enteredPinBuffer = enteredPinBuffer.slice(0, -1);
           updatePinDotsUI();
+          const pinError = document.getElementById('pinErrorMessage');
           if (pinError) pinError.style.display = 'none';
         }
       });
@@ -903,6 +968,12 @@
 
     if (pinHiddenInput) {
       pinHiddenInput.addEventListener('input', (e) => {
+        const throttle = window.BB_CRYPTO?.ThrottlingManager?.checkThrottle(window.BB_STORAGE);
+        if (throttle && throttle.isLocked) {
+          showThrottleError(throttle.remainingSeconds);
+          pinHiddenInput.value = '';
+          return;
+        }
         enteredPinBuffer = e.target.value.replace(/\D/g, '').slice(0, 7);
         updatePinDotsUI();
         checkEnteredPin();
@@ -911,7 +982,7 @@
 
     const pinForm = document.getElementById('settingsPinForm');
     if (pinForm) {
-      pinForm.addEventListener('submit', (e) => {
+      pinForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const p1 = document.getElementById('settingsNewPin')?.value.trim();
         const p2 = document.getElementById('settingsConfirmPin')?.value.trim();
@@ -926,24 +997,74 @@
           return;
         }
 
-        localStorage.setItem(STORAGE_KEY_PIN, p1);
-        updatePinSettingsUI();
-        document.getElementById('settingsNewPin').value = '';
-        document.getElementById('settingsConfirmPin').value = '';
-        if (window.BB_CORE?.showToast) window.BB_CORE.showToast('7-digit PIN protection enabled! App is now secured.', 'success');
+        const isCurrentlyActive = window.BB_STORAGE?.hasEncryptedVault() || window.BB_STORAGE?.hasLegacyPlaintextPin();
+        let oldPin = null;
+
+        if (isCurrentlyActive && !state._vaultDerivedKey) {
+          oldPin = prompt('Enter your current 7-digit PIN to authorize changing it:');
+          if (!oldPin || !/^\d{7}$/.test(oldPin)) {
+            if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Current PIN verification cancelled or invalid.', 'error');
+            return;
+          }
+        }
+
+        try {
+          if (window.BB_CORE?.enablePinProtection) {
+            await window.BB_CORE.enablePinProtection(p1, oldPin);
+          }
+          updatePinSettingsUI();
+          const newPinEl = document.getElementById('settingsNewPin');
+          const confirmPinEl = document.getElementById('settingsConfirmPin');
+          if (newPinEl) newPinEl.value = '';
+          if (confirmPinEl) confirmPinEl.value = '';
+          if (window.BB_CORE?.showToast) window.BB_CORE.showToast('7-digit PIN protection enabled! App is now secured with AES-GCM.', 'success');
+        } catch (err) {
+          if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Failed to enable PIN protection: ' + err.message, 'error');
+        }
       });
     }
 
     const removePinBtn = document.getElementById('settingsRemovePinBtn');
     if (removePinBtn) {
-      removePinBtn.addEventListener('click', () => {
-        if (confirm('Disable PIN protection and remove your 7-digit PIN?')) {
-          localStorage.removeItem(STORAGE_KEY_PIN);
-          localStorage.removeItem(LEGACY_KEY_PIN_V6);
+      removePinBtn.addEventListener('click', async () => {
+        const pin = prompt('Enter your current 7-digit PIN to disable protection:');
+        if (!pin || !/^\d{7}$/.test(pin)) {
+          if (window.BB_CORE?.showToast) window.BB_CORE.showToast('PIN removal cancelled or invalid PIN.', 'error');
+          return;
+        }
+
+        try {
+          if (window.BB_CORE?.removePinProtection) {
+            await window.BB_CORE.removePinProtection(pin);
+          }
           updatePinSettingsUI();
-          if (window.BB_CORE?.showToast) window.BB_CORE.showToast('PIN protection disabled.', 'info');
+          if (window.BB_CORE?.showToast) window.BB_CORE.showToast('PIN protection disabled. Ledger converted to unencrypted storage.', 'info');
+        } catch (err) {
+          if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Error removing PIN: ' + err.message, 'error');
         }
       });
+    }
+
+    setupInactivityListeners();
+  }
+
+  function showThrottleError(seconds) {
+    const pinError = document.getElementById('pinErrorMessage');
+    if (pinError) {
+      pinError.style.display = 'block';
+      pinError.textContent = `Too many failed attempts. Try again in ${seconds}s.`;
+    }
+    const pinDisplay = document.getElementById('pinDisplayWrapper');
+    if (pinDisplay) {
+      pinDisplay.classList.add('shake');
+      setTimeout(() => pinDisplay.classList.remove('shake'), 450);
+    }
+  }
+
+  function checkThrottleStatusUI() {
+    const throttle = window.BB_CRYPTO?.ThrottlingManager?.checkThrottle(window.BB_STORAGE);
+    if (throttle && throttle.isLocked) {
+      showThrottleError(throttle.remainingSeconds);
     }
   }
 
@@ -955,15 +1076,29 @@
     });
   }
 
-  function checkEnteredPin() {
+  async function checkEnteredPin() {
     if (enteredPinBuffer.length === 7) {
-      const storedPin = localStorage.getItem(STORAGE_KEY_PIN) || localStorage.getItem(LEGACY_KEY_PIN_V6);
+      const pinCandidate = enteredPinBuffer;
+      const throttle = window.BB_CRYPTO?.ThrottlingManager?.checkThrottle(window.BB_STORAGE);
+      if (throttle && throttle.isLocked) {
+        showThrottleError(throttle.remainingSeconds);
+        resetPinBuffer();
+        return;
+      }
+
       const pinModal = document.getElementById('pinLockModal');
       const pinError = document.getElementById('pinErrorMessage');
       const pinDisplay = document.getElementById('pinDisplayWrapper');
-      const pinHiddenInput = document.getElementById('pinHiddenInput');
 
-      if (enteredPinBuffer === storedPin) {
+      try {
+        if (window.BB_CORE?.unlockAppWithPin) {
+          await window.BB_CORE.unlockAppWithPin(pinCandidate);
+        }
+
+        if (window.BB_CRYPTO?.ThrottlingManager) {
+          window.BB_CRYPTO.ThrottlingManager.resetThrottle(window.BB_STORAGE);
+        }
+
         if (pinError) pinError.style.display = 'none';
         if (pinModal) {
           pinModal.style.opacity = '0';
@@ -973,16 +1108,24 @@
             pinModal.style.opacity = '1';
           }, 250);
         }
+        resetPinBuffer();
+        resetInactivityTimer();
         if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Unlocked Bantay Barya!', 'success');
-      } else {
-        if (pinError) pinError.style.display = 'block';
+      } catch (err) {
+        const failureInfo = window.BB_CRYPTO?.ThrottlingManager?.recordFailure(window.BB_STORAGE);
+        if (pinError) {
+          pinError.style.display = 'block';
+          if (failureInfo && failureInfo.remainingSeconds > 0) {
+            pinError.textContent = `Incorrect PIN. Locked for ${failureInfo.remainingSeconds}s.`;
+          } else {
+            pinError.textContent = 'Incorrect PIN. Please try again.';
+          }
+        }
         if (pinDisplay) {
           pinDisplay.classList.add('shake');
           setTimeout(() => {
             pinDisplay.classList.remove('shake');
-            enteredPinBuffer = '';
-            if (pinHiddenInput) pinHiddenInput.value = '';
-            updatePinDotsUI();
+            resetPinBuffer();
           }, 450);
         }
       }
@@ -990,14 +1133,17 @@
   }
 
   function updatePinSettingsUI() {
-    const storedPin = localStorage.getItem(STORAGE_KEY_PIN) || localStorage.getItem(LEGACY_KEY_PIN_V6);
+    const isEncrypted = window.BB_STORAGE ? window.BB_STORAGE.hasEncryptedVault() : false;
+    const hasLegacyPin = window.BB_STORAGE ? window.BB_STORAGE.hasLegacyPlaintextPin() : false;
+    const isPinActive = isEncrypted || hasLegacyPin;
+
     const badge = document.getElementById('settingsPinStatusBadge');
     const removeBtn = document.getElementById('settingsRemovePinBtn');
     const saveBtn = document.getElementById('settingsSavePinBtn');
 
-    if (storedPin && storedPin.length === 7) {
+    if (isPinActive) {
       if (badge) {
-        badge.textContent = 'PIN Active (7 Digits)';
+        badge.textContent = isEncrypted ? 'PIN Active (AES-GCM Encrypted)' : 'Legacy PIN (Pending Migration)';
         badge.className = 'kpi-badge badge-positive';
       }
       if (removeBtn) removeBtn.style.display = 'inline-flex';
@@ -1144,6 +1290,8 @@
     initPinSecurity,
     updatePinSettingsUI,
     detectDeviceType,
-    initPwaAndShortcuts
+    initPwaAndShortcuts,
+    lockApp,
+    resetPinBuffer
   };
 })(window);

@@ -377,7 +377,7 @@
           </td>
           <td>
             <div style="display: flex; align-items: flex-start; gap: 0.45rem;">
-              <span style="font-size: 1.15rem; line-height: 1.2;">${catIcon}</span>
+              <span style="font-size: 1.15rem; line-height: 1.2;">${escapeHtml(catIcon)}</span>
               <div>
                 <strong style="color: var(--text-primary); font-size: 0.92rem;">${escapeHtml(bill.name)}</strong>
                 <div style="font-size: 0.72rem; color: var(--text-secondary);">${escapeHtml(bill.category || 'General')}</div>
@@ -387,7 +387,7 @@
           </td>
           <td>
             <span style="font-size: 0.82rem; font-weight: 500;">
-              ${w ? `${w.icon} ${escapeHtml(w.name)}` : 'Main Wallet'}
+              ${w ? `${escapeHtml(w.icon || '👛')} ${escapeHtml(w.name)}` : 'Main Wallet'}
             </span>
           </td>
           <td class="text-right">
@@ -400,21 +400,21 @@
           <td class="text-center">
             <div class="row-actions" style="justify-content: center; gap: 0.35rem;">
               ${bill.status !== 'paid' ? `
-                <button type="button" class="btn-bill-pay" title="Mark as Paid and advance cycle" onclick="window.app.openMarkBillPaidModal('${bill.id}')">
+                <button type="button" class="btn-bill-pay" title="Mark as Paid and advance cycle" onclick="window.app.openMarkBillPaidModal('${escapeHtml(bill.id)}')">
                   <span>✓ Pay</span>
                 </button>
               ` : `
-                <button type="button" class="btn btn-ghost btn-sm" title="Mark as Unpaid" onclick="window.app.toggleBillStatus('${bill.id}')" style="font-size: 0.72rem; padding: 0.2rem 0.45rem;\">
+                <button type="button" class="btn btn-ghost btn-sm" title="Mark as Unpaid" onclick="window.app.toggleBillStatus('${escapeHtml(bill.id)}')" style="font-size: 0.72rem; padding: 0.2rem 0.45rem;">
                   <span>↩ Reopen</span>
                 </button>
               `}
-              <button type="button" class="btn-icon" title="Edit Bill" onclick="window.app.openEditBillModal('${bill.id}')">
+              <button type="button" class="btn-icon" title="Edit Bill" onclick="window.app.openEditBillModal('${escapeHtml(bill.id)}')">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                   <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                 </svg>
               </button>
-              <button type="button" class="btn-icon btn-delete" title="Delete Bill" onclick="window.app.deleteBill('${bill.id}')">
+              <button type="button" class="btn-icon btn-delete" title="Delete Bill" onclick="window.app.deleteBill('${escapeHtml(bill.id)}')">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <polyline points="3 6 5 6 21 6"></polyline>
                   <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>

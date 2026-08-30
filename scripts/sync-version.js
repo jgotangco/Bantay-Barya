@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Bantay Barya - Version Synchronization Generator
  * Reads canonical version from package.json and generates version.js for browser and Service Worker environments.
  */

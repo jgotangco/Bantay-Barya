@@ -172,10 +172,10 @@
       const monthlyInt = calculateMonthlyInterest(d);
 
       html += `
-        <tr data-debt-id="${d.id}">
+        <tr data-debt-id="${escapeHtml(d.id)}">
           <td>
             <div style="display: flex; align-items: center; gap: 0.5rem;">
-              <span style="font-size: 1.25rem;">${icon}</span>
+              <span style="font-size: 1.25rem;">${escapeHtml(icon)}</span>
               <div>
                 <strong>${escapeHtml(d.name)}</strong>
                 ${d.dueDate ? `<div style="font-size: 0.72rem; color: var(--text-muted);">${escapeHtml(d.dueDate)}</div>` : ''}
@@ -183,7 +183,7 @@
             </div>
           </td>
           <td>
-            <span class="cat-usage-pill in-use">${typeLabel}</span>
+            <span class="cat-usage-pill in-use">${escapeHtml(typeLabel)}</span>
           </td>
           <td class="text-right font-mono debit-text" style="font-weight: 700;">
             ${formatCurrency(d.balance)}
@@ -201,16 +201,16 @@
           </td>
           <td class="text-right">
             <div class="row-actions" style="justify-content: flex-end;">
-              <button class="btn btn-outline btn-sm" onclick="window.app.openLogPaymentModal('${d.id}')" title="Record an actual payment towards this debt">
+              <button class="btn btn-outline btn-sm" onclick="window.app.openLogPaymentModal('${escapeHtml(d.id)}')" title="Record an actual payment towards this debt">
                 <span>Pay</span>
               </button>
-              <button class="btn-icon" onclick="window.app.openEditDebtModal('${d.id}')" title="Edit debt parameters">
+              <button class="btn-icon" onclick="window.app.openEditDebtModal('${escapeHtml(d.id)}')" title="Edit debt parameters">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                   <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                 </svg>
               </button>
-              <button class="btn-icon btn-delete" onclick="window.app.deleteDebt('${d.id}')" title="Delete debt entry">
+              <button class="btn-icon btn-delete" onclick="window.app.deleteDebt('${escapeHtml(d.id)}')" title="Delete debt entry">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <polyline points="3 6 5 6 21 6"></polyline>
                   <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -245,7 +245,7 @@
       originalPrincipal: cleanOrigPrincipal,
       interestMethod: cleanMethod,
       monthlyRate: cleanMonthly,
-      apr: cleanMonthly * 12, // Informational nominal
+      apr: cleanMonthly * 12, // Informational
       minPayment: Math.max(0, parseFloat(minPayment) || 0),
       dueDate: (dueDate || '').trim(),
       notes: (notes || '').trim(),
@@ -279,7 +279,7 @@
     debt.originalPrincipal = cleanOrigPrincipal;
     debt.interestMethod = cleanMethod;
     debt.monthlyRate = cleanMonthly;
-    debt.apr = cleanMonthly * 12; // Informational nominal
+    debt.apr = cleanMonthly * 12; // Informational
     debt.minPayment = Math.max(0, parseFloat(minPayment) || 0);
     debt.dueDate = (dueDate !== undefined ? dueDate : debt.dueDate).trim();
     debt.notes = (notes !== undefined ? notes : debt.notes).trim();
@@ -309,7 +309,7 @@
     if (!debt) return;
 
     const monthly = getDebtMonthlyRate(debt);
-    const nominal = monthly * 12;
+    const eir = monthly * 12;
     const origPrincipal = debt.originalPrincipal !== undefined ? debt.originalPrincipal : debt.balance;
     const method = debt.interestMethod || 'diminishing';
 
@@ -331,7 +331,7 @@
     if (origInput) origInput.value = origPrincipal;
     if (methodInput) methodInput.value = method;
     if (monthlyInput) monthlyInput.value = monthly.toFixed(2);
-    if (eirDisplay) eirDisplay.value = nominal.toFixed(2);
+    if (eirDisplay) eirDisplay.value = eir.toFixed(2);
     if (minPayInput) minPayInput.value = debt.minPayment;
     if (dueInput) dueInput.value = debt.dueDate || '';
 
@@ -345,13 +345,13 @@
 
     if (debtSelect) {
       debtSelect.innerHTML = state.debts.map(d =>
-        `<option value="${d.id}" ${d.id === debtId ? 'selected' : ''}>${d.icon || '💳'} ${escapeHtml(d.name)} (Bal: ${formatCurrency(d.balance)})</option>`
+        `<option value="${escapeHtml(d.id)}" ${d.id === debtId ? 'selected' : ''}>${escapeHtml(d.icon || '💳')} ${escapeHtml(d.name)} (Bal: ${formatCurrency(d.balance)})</option>`
       ).join('');
     }
 
     if (walletSelect) {
       walletSelect.innerHTML = state.wallets.map(w =>
-        `<option value="${w.id}">${w.icon || '👛'} ${escapeHtml(w.name)} (${formatCurrency(window.BB_WALLETS ? window.BB_WALLETS.getWalletCurrentBalance(w.id) : 0)})</option>`
+        `<option value="${escapeHtml(w.id)}">${escapeHtml(w.icon || '👛')} ${escapeHtml(w.name)} (${formatCurrency(window.BB_WALLETS ? window.BB_WALLETS.getWalletCurrentBalance(w.id) : 0)})</option>`
       ).join('');
     }
 
@@ -1021,7 +1021,7 @@
       if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Deselected all debts.', 'info');
     });
 
-    // Auto-derive informational nominal annual rate on monthly rate input
+    // Auto-derive informational EIR on monthly rate input
     const newDebtMonthlyRate = document.getElementById('newDebtMonthlyRate');
     const newDebtApr = document.getElementById('newDebtApr');
     if (newDebtMonthlyRate && newDebtApr) {
@@ -1117,6 +1117,16 @@
         document.getElementById('newDebtDueDate').value = '';
       });
     }
+
+    document.getElementById('loadSampleDebtsBtn')?.addEventListener('click', () => {
+      state.debts = JSON.parse(JSON.stringify(SAMPLE_DEBTS));
+      state.selectedSimDebtIds = state.debts.map(d => d.id);
+      if (window.BB_CORE?.saveData) window.BB_CORE.saveData();
+      renderDebtsTable();
+      renderDebtSelectionList();
+      renderSnowballSimulation();
+      if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Loaded sample Home Mortgage, Auto Loan, and Credit Card debts!', 'success');
+    });
 
     const stratSnowballBtn = document.getElementById('stratSnowballBtn');
     const stratAvalancheBtn = document.getElementById('stratAvalancheBtn');

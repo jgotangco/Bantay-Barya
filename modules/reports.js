@@ -198,56 +198,68 @@
     });
     if (tableBody) tableBody.innerHTML = tableHtml;
 
-    const labels = sortedCategories.map(c => c.name);
-    const data = sortedCategories.map(c => c.total);
-    const backgroundColors = sortedCategories.map((_, idx) => REPORT_MULTI_COLORS[idx % REPORT_MULTI_COLORS.length]);
+    renderChartJs(sortedCategories, totalDebitExpense);
+  }
 
+  function renderChartJs(dataItems, totalExpense) {
     if (chartInstance) {
       chartInstance.destroy();
+      chartInstance = null;
     }
 
-    const chartType = state.reportChartType || 'doughnut';
-    const isBar = chartType === 'bar';
+    const canvas = document.getElementById('expensePieChart');
+    if (!canvas) return;
 
-    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-    const textColor = isLight ? '#0a3640' : '#b8d4cc';
-    const gridColor = isLight ? 'rgba(10, 54, 64, 0.08)' : 'rgba(123, 227, 168, 0.1)';
+    const labels = dataItems.map(d => d.name);
+    const values = dataItems.map(d => d.total);
+    const colors = dataItems.map((_, i) => REPORT_MULTI_COLORS[i % REPORT_MULTI_COLORS.length]);
 
-    const chartConfig = {
-      type: chartType,
+    const activeTheme = document.documentElement.getAttribute('data-theme');
+    const isDark = activeTheme !== 'light' && activeTheme !== 'sakura' && activeTheme !== 'sunflower';
+    const textColor = isDark ? '#f8fafc' : '#0f172a';
+    const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+    const baseSymbol = CURRENCIES[state.settings.baseCurrency]?.symbol || '₱';
+
+    const ctx = canvas.getContext('2d');
+
+    const config = {
+      type: state.reportChartType === 'bar' ? 'bar' : (state.reportChartType === 'doughnut' ? 'doughnut' : 'pie'),
       data: {
         labels: labels,
         datasets: [{
-          data: data,
-          backgroundColor: backgroundColors,
-          borderColor: isLight ? '#ffffff' : '#052a33',
-          borderWidth: isBar ? 0 : 2,
+          data: values,
+          backgroundColor: colors,
+          borderColor: isDark ? '#111827' : '#ffffff',
+          borderWidth: 2,
           hoverOffset: 6
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        animation: { duration: 400 },
         plugins: {
           legend: {
-            position: isBar ? 'none' : 'right',
-            display: !isBar,
+            position: state.reportChartType === 'bar' ? 'none' : 'bottom',
             labels: {
-              boxWidth: 12,
-              padding: 10,
               color: textColor,
-              font: {
-                family: "'Inter Tight', 'Plus Jakarta Sans', sans-serif",
-                size: 11
-              }
+              font: { family: 'Plus Jakarta Sans', size: 11, weight: '500' },
+              padding: 12,
+              usePointStyle: true,
+              pointStyle: 'circle'
             }
           },
           tooltip: {
+            backgroundColor: isDark ? '#1e293b' : '#0f172a',
+            titleColor: '#ffffff',
+            bodyColor: '#ffffff',
+            padding: 10,
+            cornerRadius: 8,
             callbacks: {
               label: function (context) {
                 const val = context.raw || 0;
-                const pct = totalDebitExpense > 0 ? ((val / totalDebitExpense) * 100).toFixed(1) : 0;
-                return ` ${context.label}: ${formatCurrency(val)} (${pct}%)`;
+                const percentage = ((val / totalExpense) * 100).toFixed(1);
+                return ` ${context.label}: ${baseSymbol}${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${percentage}%)`;
               }
             }
           }
@@ -255,84 +267,148 @@
       }
     };
 
-    if (isBar) {
-      chartConfig.options.scales = {
+    if (state.reportChartType === 'bar') {
+      config.options.plugins.legend.display = false;
+      config.options.scales = {
         x: {
-          ticks: { color: textColor, font: { family: "'Inter Tight', sans-serif", size: 10 } },
-          grid: { color: gridColor }
+          grid: { color: gridColor },
+          ticks: { color: textColor, font: { family: 'Plus Jakarta Sans', size: 11 } }
         },
         y: {
-          ticks: { color: textColor, font: { family: "'JetBrains Mono', monospace", size: 10 } },
-          grid: { color: gridColor }
+          grid: { color: gridColor },
+          ticks: {
+            color: textColor,
+            font: { family: 'JetBrains Mono', size: 11 },
+            callback: (v) => baseSymbol + v
+          }
         }
       };
     }
 
-    const ctx = canvas.getContext('2d');
-    chartInstance = new Chart(ctx, chartConfig);
+    chartInstance = new Chart(ctx, config);
   }
 
   function updateChartThemeColors() {
-    if (chartInstance) {
-      renderExpenseReport();
+    if (!chartInstance) return;
+    const activeTheme = document.documentElement.getAttribute('data-theme');
+    const isDark = activeTheme !== 'light' && activeTheme !== 'sakura' && activeTheme !== 'sunflower';
+    const textColor = isDark ? '#f8fafc' : '#0f172a';
+
+    if (chartInstance.options.plugins.legend) {
+      chartInstance.options.plugins.legend.labels.color = textColor;
     }
+    if (chartInstance.options.scales) {
+      if (chartInstance.options.scales.x) chartInstance.options.scales.x.ticks.color = textColor;
+      if (chartInstance.options.scales.y) chartInstance.options.scales.y.ticks.color = textColor;
+    }
+    chartInstance.update();
   }
 
   function renderBalanceSheet() {
     const baseCurr = state.settings.baseCurrency || 'PHP';
-    const dateEl = document.getElementById('bsAsOfDate');
-    if (dateEl) {
-      dateEl.textContent = `As of ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
+    const baseSymbol = CURRENCIES[baseCurr]?.symbol || '₱';
+    const userName = state.settings.userName ? state.settings.userName : 'Personal Financial Ledger';
+
+    const bsUser = document.getElementById('bsUserNameDisplay');
+    const bsDate = document.getElementById('bsAsOfDateDisplay');
+    const bsCurr = document.getElementById('bsCurrencyDisplay');
+
+    if (bsUser) bsUser.textContent = `Entity: ${userName}`;
+    if (bsDate) {
+      const now = new Date();
+      bsDate.textContent = `As of: ${now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`;
+    }
+    if (bsCurr) bsCurr.textContent = `Currency: Base ${baseCurr} (${baseSymbol})`;
+
+    let totalAssets = 0;
+    let assetsHtml = '';
+
+    const assetCategories = [
+      { id: 'liquid', title: 'Liquid Cash, E-Wallets & Operating Accounts', types: ['ewallet', 'spending', 'cash', 'current'] },
+      { id: 'savings', title: 'High-Yield Savings & Reserves', types: ['savings'] },
+      { id: 'fixed_income', title: 'Time Deposits & Fixed Income (Bonds/RTB)', types: ['time_deposit', 'bond'] },
+      { id: 'investments', title: 'Equities & Investment Portfolios', types: ['investment'] },
+      { id: 'crypto', title: 'Cryptocurrency & Digital Assets', types: ['crypto'] },
+      { id: 'real_estate', title: 'Real Estate & Capital Assets', types: ['real_estate', 'other'] }
+    ];
+
+    assetCategories.forEach(cat => {
+      const matchingWallets = state.wallets.filter(w => cat.types.includes(w.type) && (window.BB_WALLETS ? window.BB_WALLETS.getWalletCurrentBalance(w.id) >= 0 : true));
+      if (matchingWallets.length > 0) {
+        let catSubtotal = 0;
+        let rowsHtml = '';
+
+        matchingWallets.forEach(w => {
+          const bal = window.BB_WALLETS ? window.BB_WALLETS.getWalletCurrentBalance(w.id) : 0;
+          const convertedBal = window.BB_WALLETS ? window.BB_WALLETS.getWalletBaseConvertedBalance(w.id) : bal;
+          const wCurr = w.currency || baseCurr;
+          catSubtotal += convertedBal;
+          totalAssets += convertedBal;
+
+          const isForeign = wCurr !== baseCurr;
+          const fxRateNote = isForeign
+            ? `<div style="font-size: 0.72rem; color: var(--text-muted);">${formatForeignCurrency(bal, wCurr)} @ ${window.BB_WALLETS.getFxRate(wCurr, baseCurr).toFixed(2)} / ${wCurr}</div>`
+            : '';
+
+          rowsHtml += `
+            <tr>
+              <td>
+                <div style="display: flex; align-items: center; gap: 0.45rem;">
+                  <span>${escapeHtml(w.icon || (window.BB_WALLETS ? window.BB_WALLETS.getWalletIcon(w.type) : '👛'))}</span>
+                  <div>
+                    <strong>${escapeHtml(w.name)}</strong>
+                    ${fxRateNote}
+                  </div>
+                </div>
+              </td>
+              <td><span class="asset-type-badge ${escapeHtml(w.type || 'spending')}">${escapeHtml(window.BB_WALLETS ? window.BB_WALLETS.getWalletTypeLabel(w.type) : 'Asset')}</span></td>
+              <td class="text-right font-mono" style="font-weight: 600;">${formatCurrency(convertedBal)}</td>
+            </tr>
+          `;
+        });
+
+        assetsHtml += `
+          <tr class="statement-category-header-row" style="background-color: var(--bg-surface-subtle); border-top: 1px solid var(--border-color);">
+            <td colspan="2" style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.04em;">
+              ${escapeHtml(cat.title)}
+            </td>
+            <td class="text-right font-mono" style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary);">
+              ${formatCurrency(catSubtotal)}
+            </td>
+          </tr>
+          ${rowsHtml}
+        `;
+      }
+    });
+
+    if (!assetsHtml) {
+      assetsHtml = `<tr><td colspan="3" class="text-center text-muted" style="padding: 1rem;">No asset accounts with positive balances.</td></tr>`;
     }
 
-    const liquidList = document.getElementById('bsLiquidAssetsList');
-    const fixedList = document.getElementById('bsFixedAssetsList');
-    const currLiabList = document.getElementById('bsCurrentLiabList');
-    const longLiabList = document.getElementById('bsLongLiabList');
-    const equityList = document.getElementById('bsEquityList');
+    const bsAssetsTableBody = document.getElementById('bsAssetsTableBody');
+    const bsTotalAssets = document.getElementById('bsTotalAssets');
+    if (bsAssetsTableBody) bsAssetsTableBody.innerHTML = assetsHtml;
+    if (bsTotalAssets) bsTotalAssets.innerHTML = `<strong>${formatCurrency(totalAssets)}</strong>`;
 
-    let totalLiquid = 0;
-    let totalFixed = 0;
-    let totalCurrLiab = 0;
-    let totalLongLiab = 0;
-
-    let liquidHtml = '';
-    let fixedHtml = '';
-    let currLiabHtml = '';
-    let longLiabHtml = '';
+    let totalLiabilities = 0;
+    let liabilitiesHtml = '';
 
     state.wallets.forEach(w => {
-      const bal = parseFloat(w.balance) || 0;
-      const converted = w.currency === baseCurr ? bal : bal * (w.customExchangeRate || 1.0);
-      const isNegative = converted < 0;
-
-      if (isNegative) {
-        const absVal = Math.abs(converted);
-        totalCurrLiab += absVal;
-        currLiabHtml += `
-          <div class="bs-row">
-            <span>${w.icon || '👛'} ${escapeHtml(w.name)} (Overdraft)</span>
-            <span class="font-mono debit-text">${formatCurrency(absVal)}</span>
-          </div>
+      const bal = window.BB_WALLETS ? window.BB_WALLETS.getWalletCurrentBalance(w.id) : 0;
+      if (bal < 0) {
+        const debt = Math.abs(window.BB_WALLETS.getWalletBaseConvertedBalance(w.id));
+        totalLiabilities += debt;
+        liabilitiesHtml += `
+          <tr>
+            <td>
+              <div style="display: flex; align-items: center; gap: 0.45rem;">
+                <span>${escapeHtml(w.icon || '💳')}</span>
+                <strong>${escapeHtml(w.name)} (Account Overdraft)</strong>
+              </div>
+            </td>
+            <td class="text-right font-mono debit-text">${formatCurrency(debt)}</td>
+          </tr>
         `;
-      } else {
-        if (w.assetType === 'fixed_income' || w.assetType === 'crypto' || w.assetType === 'stocks') {
-          totalFixed += converted;
-          fixedHtml += `
-            <div class="bs-row">
-              <span>${w.icon || '📜'} ${escapeHtml(w.name)} (${w.currency || baseCurr})</span>
-              <span class="font-mono">${formatCurrency(converted)}</span>
-            </div>
-          `;
-        } else {
-          totalLiquid += converted;
-          liquidHtml += `
-            <div class="bs-row">
-              <span>${w.icon || '👛'} ${escapeHtml(w.name)} (${w.currency || baseCurr})</span>
-              <span class="font-mono">${formatCurrency(converted)}</span>
-            </div>
-          `;
-        }
       }
     });
 
@@ -346,103 +422,72 @@
         const nominal = monthlyRate * 12;
         const method = d.interestMethod === 'flat' ? 'Flat' : 'Dim';
 
-        if (d.type === 'credit_card' || d.type === 'personal') {
-          totalCurrLiab += bal;
-          currLiabHtml += `
-            <div class="bs-row">
-              <span>💳 ${escapeHtml(d.name)} (${monthlyRate.toFixed(2)}%/mo ${method})</span>
-              <span class="font-mono debit-text">${formatCurrency(bal)}</span>
-            </div>
-          `;
-        } else {
-          totalLongLiab += bal;
-          longLiabHtml += `
-            <div class="bs-row">
-              <span>🏛️ ${escapeHtml(d.name)} (${monthlyRate.toFixed(2)}%/mo ${method})</span>
-              <span class="font-mono debit-text">${formatCurrency(bal)}</span>
-            </div>
-          `;
-        }
+        liabilitiesHtml += `
+          <tr>
+            <td>
+              <div style="display: flex; align-items: center; gap: 0.45rem;">
+                <span>${escapeHtml(icon)}</span>
+                <div>
+                  <strong>${escapeHtml(d.name)}</strong>
+                  <span style="font-size: 0.72rem; color: var(--text-muted); margin-left: 4px;">(${escapeHtml(typeLabel)}, ${monthlyRate.toFixed(2)}%/mo ${method} | ~${nominal.toFixed(1)}% nominal p.a.)</span>
+                </div>
+              </div>
+            </td>
+            <td class="text-right font-mono debit-text" style="font-weight: 600;">${formatCurrency(bal)}</td>
+          </tr>
+        `;
       }
     });
 
-    if (liquidList) liquidList.innerHTML = liquidHtml || '<div class="bs-row empty-row"><span>No liquid cash / bank accounts</span><span class="font-mono">₱0.00</span></div>';
-    if (fixedList) fixedList.innerHTML = fixedHtml || '<div class="bs-row empty-row"><span>No investment or fixed-income assets</span><span class="font-mono">₱0.00</span></div>';
-    if (currLiabList) currLiabList.innerHTML = currLiabHtml || '<div class="bs-row empty-row"><span>No short-term revolving debt</span><span class="font-mono">₱0.00</span></div>';
-    if (longLiabList) longLiabList.innerHTML = longLiabHtml || '<div class="bs-row empty-row"><span>No long-term installment liabilities</span><span class="font-mono">₱0.00</span></div>';
-
-    const totalAssets = totalLiquid + totalFixed;
-    const totalLiabilities = totalCurrLiab + totalLongLiab;
-    const realNetWorth = totalAssets - totalLiabilities;
-
-    let startingCapital = 0;
-    state.wallets.forEach(w => {
-      const initBal = parseFloat(w.initialBalance) || 0;
-      startingCapital += (w.currency === baseCurr ? initBal : initBal * (w.customExchangeRate || 1.0));
-    });
-
-    let netIncomeSurplus = 0;
-    state.transactions.forEach(tx => {
-      if (tx.isArchived) return;
-      if (tx.type === 'credit') {
-        const rate = parseFloat(tx.exchangeRate) || 1.0;
-        netIncomeSurplus += ((parseFloat(tx.inputAmount) || parseFloat(tx.credit) || 0) * (tx.inputCurrency === baseCurr ? 1.0 : rate));
-      } else if (tx.type === 'debit') {
-        const rate = parseFloat(tx.exchangeRate) || 1.0;
-        netIncomeSurplus -= ((parseFloat(tx.inputAmount) || parseFloat(tx.debit) || 0) * (tx.inputCurrency === baseCurr ? 1.0 : rate));
-      }
-    });
-
-    const otherBalAdjustments = realNetWorth - (startingCapital + netIncomeSurplus);
-
-    let equityHtml = `
-      <div class="bs-row">
-        <span>Initial Ledger Capital (Opening Balances)</span>
-        <span class="font-mono">${formatCurrency(startingCapital)}</span>
-      </div>
-      <div class="bs-row">
-        <span>Cumulative Net Operating Surplus (Inflows − Outflows)</span>
-        <span class="font-mono ${netIncomeSurplus >= 0 ? 'credit-text' : 'debit-text'}">${formatCurrency(netIncomeSurplus)}</span>
-      </div>
-    `;
-
-    if (Math.abs(otherBalAdjustments) > 0.01) {
-      equityHtml += `
-        <div class="bs-row">
-          <span>Reconciled Discrepancies & Liabilities Adjustments</span>
-          <span class="font-mono">${formatCurrency(otherBalAdjustments)}</span>
-        </div>
+    if (!liabilitiesHtml) {
+      liabilitiesHtml = `
+        <tr>
+          <td><span style="color: var(--credit-color); font-weight: 600;">✓ 100% Debt-Free / No Outstanding Liabilities</span></td>
+          <td class="text-right font-mono text-muted">${formatCurrency(0)}</td>
+        </tr>
       `;
     }
 
-    if (equityList) equityList.innerHTML = equityHtml;
+    const bsLiabTableBody = document.getElementById('bsLiabilitiesTableBody');
+    const bsTotalLiab = document.getElementById('bsTotalLiabilities');
+    if (bsLiabTableBody) bsLiabTableBody.innerHTML = liabilitiesHtml;
+    if (bsTotalLiab) bsTotalLiab.textContent = formatCurrency(totalLiabilities);
 
-    const bsTotalLiquid = document.getElementById('bsTotalLiquidAssets');
-    const bsTotalFixed = document.getElementById('bsTotalFixedAssets');
-    const bsGrandAssets = document.getElementById('bsGrandTotalAssets');
+    const startingCapital = state.wallets.reduce((acc, w) => acc + (window.BB_WALLETS ? window.BB_WALLETS.convertCurrency(parseFloat(w.initialBalance) || 0, w.currency || baseCurr, baseCurr) : 0), 0);
+    const totalCredits = state.transactions.reduce((acc, tx) => acc + (parseFloat(tx.credit) || 0), 0);
+    const totalDebits = state.transactions.reduce((acc, tx) => acc + (parseFloat(tx.debit) || 0), 0);
+    const netSurplus = totalCredits - totalDebits;
 
-    const bsTotalCurr = document.getElementById('bsTotalCurrentLiab');
-    const bsTotalLong = document.getElementById('bsTotalLongLiab');
-    const bsGrandLiab = document.getElementById('bsGrandTotalLiab');
-    const bsNetWorth = document.getElementById('bsTotalRealNetWorth');
-    const bsGrandLiabEquity = document.getElementById('bsGrandTotalLiabEquity');
-    const bsBalanceCheck = document.getElementById('bsBalanceEquationCheck');
+    const reconcileTxs = state.transactions.filter(t => (t.item || '').toLowerCase().includes('reconcil'));
+    const netReconciliation = reconcileTxs.reduce((acc, tx) => acc + (parseFloat(tx.credit) || 0) - (parseFloat(tx.debit) || 0), 0);
 
-    if (bsTotalLiquid) bsTotalLiquid.textContent = formatCurrency(totalLiquid);
-    if (bsTotalFixed) bsTotalFixed.textContent = formatCurrency(totalFixed);
-    if (bsGrandAssets) bsGrandAssets.textContent = formatCurrency(totalAssets);
+    const totalNetPosition = totalAssets - totalLiabilities;
+    const totalLiabilitiesAndEquity = totalLiabilities + totalNetPosition;
 
-    if (bsTotalCurr) bsTotalCurr.textContent = formatCurrency(totalCurrLiab);
-    if (bsTotalLong) bsTotalLong.textContent = formatCurrency(totalLongLiab);
-    if (bsGrandLiab) bsGrandLiab.textContent = formatCurrency(totalLiabilities);
-    if (bsNetWorth) {
-      bsNetWorth.textContent = formatCurrency(realNetWorth);
-      bsNetWorth.className = `font-mono ${realNetWorth >= 0 ? 'credit-text' : 'debit-text'}`;
+    const bsStartCap = document.getElementById('bsStartingCapital');
+    const bsSurplus = document.getElementById('bsNetSurplus');
+    const bsReconcile = document.getElementById('bsReconcileAdjustments');
+    const bsNetPos = document.getElementById('bsTotalNetPosition');
+    const bsTotalLiabEquity = document.getElementById('bsTotalLiabilitiesAndEquity');
+    const bsBalanceCheck = document.getElementById('bsBalanceCheckBadge');
+
+    if (bsStartCap) bsStartCap.textContent = formatCurrency(startingCapital);
+    if (bsSurplus) {
+      bsSurplus.textContent = (netSurplus >= 0 ? '+' : '') + formatCurrency(netSurplus);
+      bsSurplus.style.color = netSurplus >= 0 ? 'var(--credit-color)' : 'var(--debit-color)';
     }
-    if (bsGrandLiabEquity) bsGrandLiabEquity.textContent = formatCurrency(totalLiabilities + realNetWorth);
+
+    if (bsReconcile) bsReconcile.textContent = (netReconciliation >= 0 ? '+' : '') + formatCurrency(netReconciliation);
+    if (bsNetPos) {
+      bsNetPos.innerHTML = `<strong>${formatCurrency(totalNetPosition)}</strong>`;
+      bsNetPos.style.color = totalNetPosition >= 0 ? 'var(--accent-primary)' : 'var(--debit-color)';
+    }
+    if (bsTotalLiabEquity) {
+      bsTotalLiabEquity.innerHTML = `<strong>${formatCurrency(totalLiabilitiesAndEquity)}</strong>`;
+    }
 
     if (bsBalanceCheck) {
-      const diff = Math.abs(totalAssets - (totalLiabilities + realNetWorth));
+      const diff = Math.abs(totalAssets - totalLiabilitiesAndEquity);
       if (diff < 0.01) {
         bsBalanceCheck.textContent = '✓ Fundamental Accounting Equation Balanced: Assets = Liabilities + Real Net Worth';
         bsBalanceCheck.style.color = 'var(--credit-color)';
@@ -537,40 +582,32 @@
       exportDropdown?.classList.toggle('show');
     });
 
-    document.getElementById('exportCsvBtn')?.addEventListener('click', () => {
-      exportLedgerCsv();
+    document.addEventListener('click', () => {
       exportDropdown?.classList.remove('show');
     });
 
-    document.getElementById('exportGoogleSheetsBtn')?.addEventListener('click', () => {
-      copyForGoogleSheets();
-      exportDropdown?.classList.remove('show');
-    });
-
-    document.getElementById('exportJsonBtn')?.addEventListener('click', () => {
-      exportLedgerJson();
-      exportDropdown?.classList.remove('show');
-    });
-
-    document.getElementById('importJsonBtn')?.addEventListener('click', () => {
-      document.getElementById('importFileInput')?.click();
-      exportDropdown?.classList.remove('show');
-    });
-
-    document.getElementById('importFileInput')?.addEventListener('change', handleFileImport);
-
+    document.getElementById('exportCsvBtn')?.addEventListener('click', () => exportLedgerCsv());
+    document.getElementById('exportSheetsBtn')?.addEventListener('click', () => copyForGoogleSheets());
+    document.getElementById('exportJsonBtn')?.addEventListener('click', () => exportLedgerJson());
+    document.getElementById('importJsonInput')?.addEventListener('change', handleFileImport);
     document.getElementById('loadSampleDataBtn')?.addEventListener('click', () => {
-      exportDropdown?.classList.remove('show');
-      if (window.BB_APP?.hasActiveSavedLedger && window.BB_APP.hasActiveSavedLedger()) {
-        window.BB_APP.openOverwriteWarningModal('sample_data', () => loadSampleData());
+      if (window.BB_CORE?.hasActiveSavedLedger?.()) {
+        window.BB_CORE.openOverwriteWarningModal('load_sample', () => loadSampleData());
       } else {
         loadSampleData();
       }
     });
 
-    document.addEventListener('click', (e) => {
-      if (!e.target.closest('.dropdown-wrapper')) {
-        exportDropdown?.classList.remove('show');
+    document.getElementById('clearAllDataBtn')?.addEventListener('click', () => {
+      if (confirm('Are you sure you want to reset all Bantay Barya records to 0 balance? This cannot be undone.')) {
+        state.transactions = [];
+        state.wallets = [...DEFAULT_WALLETS];
+        state.wallets[0].initialBalance = 0;
+        if (window.BB_WALLETS) {
+          window.BB_WALLETS.recalculateLedgerBalances();
+          window.BB_WALLETS.populateWalletDropdowns();
+        }
+        if (window.BB_CORE?.showToast) window.BB_CORE.showToast('All transactions cleared. Balance reset to ₱0.00.', 'info');
       }
     });
   }
@@ -583,20 +620,17 @@
 
     const baseCurr = state.settings.baseCurrency || 'PHP';
     const headers = [
-      'ID', 'Date', 'Type', 'Wallet ID', 'Wallet Name', 'Category / Item',
-      `Credit Inflow (${baseCurr})`, `Debit Outflow (${baseCurr})`,
-      `Wallet Balance (${baseCurr})`, `Converted Total Balance (${baseCurr})`,
-      'Input Currency', 'Input Amount', 'FX Exchange Rate', 'Notes'
+      'Date', 'Wallet', 'Expense Item / Classification',
+      `Credit (${baseCurr})`, `Debit (${baseCurr})`,
+      `Wallet Balance (${baseCurr})`, `Total Net Balance (${baseCurr})`,
+      'Input Currency', 'Input Amount', 'Exchange Rate', 'Notes'
     ];
 
-    const rows = sorted.map((tx) => {
-      const wallet = state.wallets.find(w => w.id === tx.walletId) || {};
+    const rows = sorted.map(tx => {
+      const w = window.BB_WALLETS ? window.BB_WALLETS.getWallet(tx.walletId) : null;
       return [
-        `"${tx.id || ''}"`,
-        `"${tx.date || ''}"`,
-        `"${tx.type || 'debit'}"`,
-        `"${tx.walletId || ''}"`,
-        `"${(wallet.name || '').replace(/"/g, '""')}"`,
+        `"${tx.date}"`,
+        `"${(w ? w.name : 'Main Wallet').replace(/"/g, '""')}"`,
         `"${(tx.item || '').replace(/"/g, '""')}"`,
         parseFloat(tx.credit || 0).toFixed(2),
         parseFloat(tx.debit || 0).toFixed(2),
@@ -628,18 +662,20 @@
 
     const baseCurr = state.settings.baseCurrency || 'PHP';
     const headers = [
-      'Date', 'Wallet', 'Category / Item', `Debit (${baseCurr})`, `Credit (${baseCurr})`,
-      `Wallet Balance (${baseCurr})`, `Total Balance (${baseCurr})`, 'Input Currency', 'Amount', 'FX Rate', 'Notes'
+      'Date', 'Wallet', 'Classification',
+      `Credit (${baseCurr})`, `Debit (${baseCurr})`,
+      `Wallet Balance (${baseCurr})`, `Net Balance (${baseCurr})`,
+      'Currency', 'Amount', 'FX Rate', 'Notes'
     ];
 
-    const rows = sorted.map((tx) => {
-      const wallet = state.wallets.find(w => w.id === tx.walletId) || {};
+    const tsvRows = sorted.map(tx => {
+      const w = window.BB_WALLETS ? window.BB_WALLETS.getWallet(tx.walletId) : null;
       return [
         tx.date || '',
-        wallet.name || '',
+        w ? w.name : 'Main Wallet',
         tx.item || '',
-        parseFloat(tx.debit || 0).toFixed(2),
         parseFloat(tx.credit || 0).toFixed(2),
+        parseFloat(tx.debit || 0).toFixed(2),
         parseFloat(tx.walletRunningBalance || 0).toFixed(2),
         parseFloat(tx.runningBalance || 0).toFixed(2),
         tx.inputCurrency || baseCurr,
@@ -649,172 +685,237 @@
       ].join('\t');
     });
 
-    const tsvData = [headers.join('\t'), ...rows].join('\n');
-    navigator.clipboard.writeText(tsvData).then(() => {
-      if (window.BB_CORE?.showToast) {
-        window.BB_CORE.showToast('TSV copied to clipboard! Paste directly into Google Sheets (Ctrl+V)', 'success');
-      }
-    }).catch(() => {
-      if (window.BB_CORE?.showToast) {
-        window.BB_CORE.showToast('Could not access clipboard. Please export as CSV instead.', 'error');
-      }
-    });
+    const fullTsv = [headers.join('\t'), ...tsvRows].join('\n');
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(fullTsv)
+        .then(() => {
+          if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Copied to clipboard! Open Google Sheets and press Ctrl+V to paste.', 'success');
+        })
+        .catch(() => fallbackCopyText(fullTsv));
+    } else {
+      fallbackCopyText(fullTsv);
+    }
   }
 
-  function exportLedgerJson(customFilename = null) {
-    const exportData = {
-      app: 'Bantay Barya',
+  function fallbackCopyText(text) {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    try {
+      document.execCommand('copy');
+      if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Copied for Google Sheets! Paste with Ctrl+V.', 'success');
+    } catch (e) {
+      if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Please copy from the CSV export file.', 'info');
+    }
+    document.body.removeChild(textarea);
+  }
+
+  async function exportLedgerJson(filenamePrefix = 'Bantay_Barya_Backup') {
+    const backupData = {
+      appName: 'Bantay Barya',
       author: 'Jerome Gotangco (https://github.com/jgotangco)',
       attribution: 'Designed and product-directed by Jerome Gotangco. Developed with Google Antigravity / Gemini.',
-      version: '2.9.0',
+      disclaimer: 'Personal work of the author, not affiliated with or endorsed by Google or any other party.',
+      website: 'https://antigravity.google/',
+      version: '7.0',
       exportedAt: new Date().toISOString(),
-      baseCurrency: state.settings.baseCurrency || 'PHP',
-      activeWalletId: state.activeWalletId,
+      baseCurrency: state.settings.baseCurrency,
+      saveSlots: state.saveSlots,
+      activeSlotId: state.activeSlotId,
       wallets: state.wallets,
-      categories: state.categories,
-      transactions: state.transactions,
       debts: state.debts,
       bills: state.bills,
-      settings: state.settings
+      categories: state.categories,
+      settings: state.settings,
+      transactions: state.transactions
     };
 
-    const jsonStr = JSON.stringify(exportData, null, 2);
-    const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(jsonStr);
+    let exportPayload = backupData;
+    if (window.BB_STORAGE?.hasEncryptedVault?.() && window.BB_CRYPTO) {
+      try {
+        if (state._vaultDerivedKey) {
+          exportPayload = await window.BB_CRYPTO.createEncryptedBackup(backupData, state._vaultDerivedKey);
+        } else {
+          const pin = prompt('Enter your 7-digit PIN to encrypt this JSON backup:');
+          if (!pin || !/^\d{7}$/.test(pin)) {
+            if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Valid 7-digit PIN required to export encrypted backup.', 'error');
+            return;
+          }
+          exportPayload = await window.BB_CRYPTO.createEncryptedBackup(backupData, pin);
+        }
+      } catch (err) {
+        if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Failed to encrypt backup: ' + err.message, 'error');
+        return;
+      }
+    }
+
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(exportPayload, null, 2));
     const link = document.createElement('a');
-    link.setAttribute('href', dataUri);
-    const filenamePrefix = customFilename || 'Bantay_Barya_Full_Backup';
+    link.setAttribute('href', dataStr);
     link.setAttribute('download', `${filenamePrefix}_${getRelativeDateString(0)}.json`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    if (window.BB_CORE?.showToast) window.BB_CORE.showToast('JSON backup exported successfully!', 'success');
+    if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Bantay Barya Multi-Wallet JSON backup exported!', 'success');
   }
 
-  function handleFileImport(e) {
-    const file = e.target.files[0];
+  function handleFileImport(e, bypassConfirm = false) {
+    const file = e.target?.files?.[0] || e;
     if (!file) return;
 
-    const performImport = () => {
+    if (file.size > 15 * 1024 * 1024) {
+      if (window.BB_CORE?.showToast) window.BB_CORE.showToast('File exceeds maximum size of 15MB.', 'error');
+      return;
+    }
+
+    const executeImport = () => {
+      if (file.name.endsWith('.barya')) {
+        if (window.BB_WALLETS) window.BB_WALLETS.importBaryaFile(file);
+        return;
+      }
+
       const reader = new FileReader();
-      reader.onload = function (event) {
+      reader.onload = async (event) => {
         try {
-          const content = event.target.result;
-          if (file.name.endsWith('.json') || file.name.endsWith('.barya')) {
-            const data = JSON.parse(content);
-            if (data.wallets && Array.isArray(data.wallets)) {
-              state.wallets = data.wallets;
-            }
-            if (data.transactions && Array.isArray(data.transactions)) {
-              state.transactions = data.transactions;
-            }
-            if (data.categories && Array.isArray(data.categories)) {
-              state.categories = data.categories;
-            }
-            if (data.debts && Array.isArray(data.debts)) {
-              state.debts = data.debts;
-            }
-            if (data.bills && Array.isArray(data.bills)) {
-              state.bills = data.bills;
-            }
-            if (data.settings && typeof data.settings === 'object') {
-              state.settings = { ...state.settings, ...data.settings };
-            }
-            if (data.activeWalletId) {
-              state.activeWalletId = data.activeWalletId;
-            } else if (state.wallets.length > 0) {
-              state.activeWalletId = state.wallets[0].id;
+          const text = event.target.result;
+          if (file.name.endsWith('.json')) {
+            let parsed = JSON.parse(text);
+
+            if (parsed && (parsed.format === 'bantay_barya_encrypted_backup' || parsed.format === 'bantay_barya_encrypted_vault')) {
+              if (!window.BB_CRYPTO) throw new Error('Crypto module not available to decrypt backup.');
+              const pin = prompt('This JSON backup is encrypted. Enter the 7-digit PIN to decrypt:');
+              if (!pin || !/^\d{7}$/.test(pin)) {
+                if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Invalid PIN format. PIN must be 7 digits.', 'error');
+                return;
+              }
+              parsed = await window.BB_CRYPTO.decryptEncryptedBackup(parsed, pin);
             }
 
-            if (window.BB_CORE?.saveToStorage) window.BB_CORE.saveToStorage();
-            if (window.BB_WALLETS) {
-              window.BB_WALLETS.populateWalletDropdowns();
-              window.BB_WALLETS.recalculateLedgerBalances();
+            if (window.BB_VALIDATOR) {
+              const validated = window.BB_VALIDATOR.validateAndNormalizeLedger(parsed);
+
+              state.wallets = validated.wallets;
+              state.transactions = validated.transactions;
+              state.debts = validated.debts;
+              state.bills = validated.bills;
+              state.categories = validated.categories;
+              state.settings = validated.settings;
+              state.saveSlots = validated.saveSlots;
+              state.activeSlotId = validated.activeSlotId || state.saveSlots[0]?.id || 'slot_primary';
+
+              if (window.BB_CORE) {
+                window.BB_CORE.updateCategoryDatalists();
+                window.BB_CORE.updateFxRateAndConversion();
+                window.BB_CORE.saveData();
+              }
+              if (window.BB_WALLETS) {
+                window.BB_WALLETS.populateWalletDropdowns();
+                window.BB_WALLETS.recalculateLedgerBalances();
+              }
+              if (window.BB_BILLS) {
+                window.BB_BILLS.checkBillDueNotifications();
+                window.BB_BILLS.renderBillsTable();
+              }
+              const baseSelect = document.getElementById('baseCurrencySelect');
+              const txSelect = document.getElementById('txCurrencySelect');
+              const nameInput = document.getElementById('settingsUserNameInput');
+
+              if (baseSelect) baseSelect.value = state.settings.baseCurrency || 'PHP';
+              if (txSelect) txSelect.value = state.settings.baseCurrency || 'PHP';
+              if (nameInput) nameInput.value = state.settings.userName || '';
+              if (window.BB_THEME) window.BB_THEME.updateTimeGreeting();
+
+              if (window.BB_CORE?.showToast) window.BB_CORE.showToast(`Restored ${state.transactions.length} transactions across ${state.wallets.length} wallets!`, 'success');
+            } else if (parsed.transactions && Array.isArray(parsed.transactions)) {
+              state.transactions = parsed.transactions;
+              state.wallets = (parsed.wallets && Array.isArray(parsed.wallets)) ? parsed.wallets : [...DEFAULT_WALLETS];
+              if (parsed.debts && Array.isArray(parsed.debts)) state.debts = parsed.debts;
+              if (parsed.bills && Array.isArray(parsed.bills)) state.bills = parsed.bills;
+              if (parsed.settings) state.settings = parsed.settings;
+              if (parsed.categories && Array.isArray(parsed.categories)) state.categories = parsed.categories;
+              if (parsed.saveSlots && Array.isArray(parsed.saveSlots)) state.saveSlots = parsed.saveSlots;
+              if (parsed.activeSlotId) state.activeSlotId = parsed.activeSlotId;
+
+              state.transactions.forEach(t => {
+                if (!t.walletId) t.walletId = state.wallets[0]?.id || 'wallet_default';
+              });
+
+              if (window.BB_CORE) {
+                window.BB_CORE.updateCategoryDatalists();
+                window.BB_CORE.updateFxRateAndConversion();
+                window.BB_CORE.saveData();
+              }
+              if (window.BB_WALLETS) {
+                window.BB_WALLETS.populateWalletDropdowns();
+                window.BB_WALLETS.recalculateLedgerBalances();
+              }
+              if (window.BB_BILLS) {
+                window.BB_BILLS.checkBillDueNotifications();
+                window.BB_BILLS.renderBillsTable();
+              }
+              if (window.BB_CORE?.showToast) window.BB_CORE.showToast(`Restored ${parsed.transactions.length} transactions across ${state.wallets.length} wallets!`, 'success');
+            } else {
+              if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Invalid JSON ledger backup format.', 'error');
             }
-            if (window.BB_DEBTS) window.BB_DEBTS.renderDebtsTable();
-            if (window.BB_BILLS) {
-              window.BB_BILLS.checkBillDueNotifications();
-              window.BB_BILLS.renderBillsTable();
-            }
-            if (window.BB_CORE) {
-              window.BB_CORE.updateCategoryDatalists();
-              window.BB_CORE.updateSettingsUI();
-            }
-            if (window.BB_CORE?.showToast) window.BB_CORE.showToast(`Imported ${state.transactions.length} transactions and ${state.wallets.length} wallets!`, 'success');
           }
         } catch (err) {
-          console.error('Import error:', err);
-          if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Failed to import file. Invalid backup format.', 'error');
+          if (window.BB_CORE?.showToast) window.BB_CORE.showToast('Error importing backup file: ' + err.message, 'error');
         }
+
+        const input = document.getElementById('importJsonInput');
+        if (input) input.value = '';
+        const driveInput = document.getElementById('loadFromDriveInput');
+        if (driveInput) driveInput.value = '';
+        const welcomeInput = document.getElementById('welcomeImportInput');
+        if (welcomeInput) welcomeInput.value = '';
       };
       reader.readAsText(file);
     };
 
-    if (window.BB_APP?.hasActiveSavedLedger && window.BB_APP.hasActiveSavedLedger()) {
-      window.BB_APP.openOverwriteWarningModal('restore_backup', performImport);
+    if (!bypassConfirm && window.BB_CORE?.hasActiveSavedLedger?.()) {
+      window.BB_CORE.openOverwriteWarningModal('restore_backup', executeImport);
     } else {
-      performImport();
+      executeImport();
     }
   }
 
   function loadSampleData() {
-    const today = getRelativeDateString(0);
-    const yesterday = getRelativeDateString(-1);
-    const twoDaysAgo = getRelativeDateString(-2);
-    const threeDaysAgo = getRelativeDateString(-3);
-    const fiveDaysAgo = getRelativeDateString(-5);
-    const tenDaysAgo = getRelativeDateString(-10);
-    const fifteenDaysAgo = getRelativeDateString(-15);
-    const twentyDaysAgo = getRelativeDateString(-20);
-    const twentyFiveDaysAgo = getRelativeDateString(-25);
-    const thirtyDaysAgo = getRelativeDateString(-30);
-
+    const baseTimestamp = Date.now();
     state.wallets = [
-      { id: 'w_bpi', name: 'BPI Checking', currency: 'PHP', icon: '🏛️', initialBalance: 75000, balance: 75000, assetType: 'checking', isDefault: true, createdAt: 1700000000000 },
-      { id: 'w_maya_savings', name: 'Maya 6% Savings', currency: 'PHP', icon: '🏦', initialBalance: 120000, balance: 120000, assetType: 'high_yield_savings', isDefault: false, createdAt: 1700000000000 },
-      { id: 'w_gcash', name: 'GCash Everyday', currency: 'PHP', icon: '📱', initialBalance: 15000, balance: 15000, assetType: 'ewallet', isDefault: false, createdAt: 1700000000000 },
-      { id: 'w_cash', name: 'Cash on Hand (Wallet)', currency: 'PHP', icon: '💵', initialBalance: 5000, balance: 5000, assetType: 'cash', isDefault: false, createdAt: 1700000000000 },
-      { id: 'w_wise_usd', name: 'Wise Multi-Currency USD', currency: 'USD', icon: '💳', initialBalance: 2500, balance: 2500, assetType: 'ewallet', customExchangeRate: 58.50, isDefault: false, createdAt: 1700000000000 },
-      { id: 'w_maya_td', name: 'Maya 6-Mo Time Deposit', currency: 'PHP', icon: '📜', initialBalance: 100000, balance: 100000, assetType: 'fixed_income', isDefault: false, createdAt: 1700000000000 },
-      { id: 'w_stocks', name: 'COL Financial PSE Equities', currency: 'PHP', icon: '📈', initialBalance: 150000, balance: 150000, assetType: 'stocks', isDefault: false, createdAt: 1700000000000 },
-      { id: 'w_crypto', name: 'Hardware Ledger Cold Storage', currency: 'PHP', icon: '🪙', initialBalance: 85000, balance: 85000, assetType: 'crypto', isDefault: false, createdAt: 1700000000000 }
+      { id: 'wallet_spending', name: 'Personal Spending', type: 'spending', currency: 'PHP', icon: '👛', initialBalance: 15000.00, createdAt: baseTimestamp - 70 * 86400000 },
+      { id: 'wallet_ewallet', name: 'GCash / Maya Super App', type: 'ewallet', currency: 'PHP', icon: '📱', initialBalance: 8500.00, createdAt: baseTimestamp - 70 * 86400000 },
+      { id: 'wallet_savings', name: 'High-Yield Savings (SeaBank / Maya)', type: 'savings', currency: 'PHP', icon: '🏦', initialBalance: 50000.00, createdAt: baseTimestamp - 70 * 86400000 },
+      { id: 'wallet_crypto', name: 'Crypto Portfolio (BTC / ETH / SOL)', type: 'crypto', currency: 'USD', icon: '🪙', initialBalance: 3500.00, createdAt: baseTimestamp - 70 * 86400000 },
+      { id: 'wallet_stocks', name: 'US Equities & ETFs (GoTrade / PSEi)', type: 'investment', currency: 'USD', icon: '📈', initialBalance: 5000.00, createdAt: baseTimestamp - 70 * 86400000 },
+      { id: 'wallet_td', name: 'Maya 6.0% p.a. Time Deposit', type: 'time_deposit', currency: 'PHP', icon: '⏳', initialBalance: 100000.00, createdAt: baseTimestamp - 70 * 86400000 },
+      { id: 'wallet_cash', name: 'Physical Cash on Hand', type: 'cash', currency: 'PHP', icon: '💵', initialBalance: 5000.00, createdAt: baseTimestamp - 70 * 86400000 }
     ];
-    state.activeWalletId = 'w_bpi';
-
-    state.categories = [...DEFAULT_CATEGORIES];
 
     state.transactions = [
-      { id: 'tx_demo_01', date: thirtyDaysAgo, type: 'credit', walletId: 'w_bpi', item: 'Salary (15th Payday)', credit: 65000, debit: 0, notes: 'Net salary direct deposit via ACH wire', runningBalance: 0, createdAt: 1700000001000 },
-      { id: 'tx_demo_02', date: twentyFiveDaysAgo, type: 'debit', walletId: 'w_bpi', item: 'Rent / Housing', credit: 0, debit: 18000, notes: 'Condo monthly rent via bank transfer', runningBalance: 0, createdAt: 1700000002000 },
-      { id: 'tx_demo_03', date: twentyDaysAgo, type: 'debit', walletId: 'w_gcash', item: 'Food & Groceries', credit: 0, debit: 5420.50, notes: 'S&R Membership Shopping weekend groceries', runningBalance: 0, createdAt: 1700000003000 },
-      { id: 'tx_demo_04', date: fifteenDaysAgo, type: 'credit', walletId: 'w_bpi', item: 'Salary (30th Payday)', credit: 65000, debit: 0, notes: 'Second cut payday credited', runningBalance: 0, createdAt: 1700000004000 },
-      { id: 'tx_demo_05', date: tenDaysAgo, type: 'debit', walletId: 'w_bpi', item: 'Electricity (Meralco)', credit: 0, debit: 6850.75, notes: 'Meralco summer aircon electricity bill', runningBalance: 0, createdAt: 1700000005000 },
-      { id: 'tx_demo_06', date: fiveDaysAgo, type: 'debit', walletId: 'w_gcash', item: 'Internet & Broadband', credit: 0, debit: 2099.00, notes: 'PLDT Home Fiber monthly subscription', runningBalance: 0, createdAt: 1700000006000 },
-      { id: 'tx_demo_07', date: threeDaysAgo, type: 'debit', walletId: 'w_cash', item: 'Transportation & Fuel', credit: 0, debit: 2800.00, notes: 'Shell full tank gas + tollway RFID top-up', runningBalance: 0, createdAt: 1700000007000 },
-      { id: 'tx_demo_08', date: twoDaysAgo, type: 'debit', walletId: 'w_wise_usd', item: 'Software & Cloud Tools', inputCurrency: 'USD', inputAmount: 49.00, exchangeRate: 58.50, credit: 0, debit: 2866.50, notes: 'GitHub Copilot + Google Workspace business account', runningBalance: 0, createdAt: 1700000008000 },
-      { id: 'tx_demo_09', date: yesterday, type: 'debit', walletId: 'w_bpi', item: 'Dining & Restaurants', credit: 0, debit: 1850.00, notes: 'Family dinner weekend treat at restaurant', runningBalance: 0, createdAt: 1700000009000 },
-      { id: 'tx_demo_10', date: today, type: 'credit', walletId: 'w_maya_savings', item: 'High-Yield Interest Inflow', credit: 620.45, debit: 0, notes: 'Maya 6.0% p.a. daily interest credit posted', runningBalance: 0, createdAt: 1700000010000 }
+      { id: 'tx_demo_1', walletId: 'wallet_spending', date: getRelativeDateString(-65), item: 'Balance Brought Forward', type: 'credit', inputCurrency: 'PHP', inputAmount: 15000.00, exchangeRate: 1.0, credit: 15000.00, debit: 0, notes: 'Initial personal spending balance', createdAt: baseTimestamp - 65 * 86400000 },
+      { id: 'tx_demo_2', walletId: 'wallet_savings', date: getRelativeDateString(-55), item: 'Salary & Wages', type: 'credit', inputCurrency: 'PHP', inputAmount: 48000.00, exchangeRate: 1.0, credit: 48000.00, debit: 0, notes: 'Monthly earnings (Two months ago into savings)', createdAt: baseTimestamp - 55 * 86400000 },
+      { id: 'tx_demo_3', walletId: 'wallet_spending', date: getRelativeDateString(-45), item: 'Rent & Housing', type: 'debit', inputCurrency: 'PHP', inputAmount: 15000.00, exchangeRate: 1.0, credit: 0, debit: 15000.00, notes: 'Apartment rent from spending wallet', createdAt: baseTimestamp - 45 * 86400000 },
+      { id: 'tx_demo_4', walletId: 'wallet_savings', date: getRelativeDateString(-25), item: 'Salary & Wages', type: 'credit', inputCurrency: 'PHP', inputAmount: 48000.00, exchangeRate: 1.0, credit: 48000.00, debit: 0, notes: 'Monthly earnings (Last month into savings)', createdAt: baseTimestamp - 25 * 86400000 },
+      { id: 'tx_demo_5', walletId: 'wallet_cash', date: getRelativeDateString(-18), item: 'Groceries', type: 'debit', inputCurrency: 'PHP', inputAmount: 2500.00, exchangeRate: 1.0, credit: 0, debit: 2500.00, notes: 'Farmers market groceries with cash', createdAt: baseTimestamp - 18 * 86400000 },
+      { id: 'tx_demo_6', walletId: 'wallet_spending', date: getRelativeDateString(-12), item: 'Groceries', type: 'debit', inputCurrency: 'PHP', inputAmount: 4200.00, exchangeRate: 1.0, credit: 0, debit: 4200.00, notes: 'Supermarket supplies on card', createdAt: baseTimestamp - 12 * 86400000 },
+      { id: 'tx_demo_7', walletId: 'wallet_savings', date: getRelativeDateString(-4), item: 'Balance Reconciliation', type: 'credit', inputCurrency: 'PHP', inputAmount: 650.00, exchangeRate: 1.0, credit: 650.00, debit: 0, notes: 'Bank interest credited to savings (+₱650.00)', createdAt: baseTimestamp - 4 * 86400000 },
+      { id: 'tx_demo_8', walletId: 'wallet_cash', date: getRelativeDateString(-1), item: 'Dining & Food', type: 'debit', inputCurrency: 'PHP', inputAmount: 850.00, exchangeRate: 1.0, credit: 0, debit: 850.00, notes: 'Street food and coffee', createdAt: baseTimestamp - 1 * 86400000 },
+      { id: 'tx_demo_9', walletId: 'wallet_spending', date: getRelativeDateString(0), item: 'Software & Subscriptions', type: 'debit', inputCurrency: 'USD', inputAmount: 20.00, exchangeRate: 58.50, credit: 0, debit: 1170.00, notes: 'Online productivity tools ($20 USD @ 58.50)', createdAt: baseTimestamp }
     ];
 
-    state.debts = [
-      { id: 'd_demo_bpi_cc', name: 'BPI Visa Signature', type: 'credit_card', balance: 28500, originalPrincipal: 28500, interestMethod: 'diminishing', minPayment: 1500, monthlyRate: 3.0, apr: 36.0, dueDay: 18, notes: 'Revolving card (Paid in full each cycle)', createdAt: 1700000000000 },
-      { id: 'd_demo_auto', name: 'Toyota Vios Auto Loan', type: 'auto_loan', balance: 340000, originalPrincipal: 340000, interestMethod: 'flat', minPayment: 14850, monthlyRate: 0.82, apr: 9.84, dueDay: 25, notes: '5-year fixed chattel mortgage', createdAt: 1700000000000 },
-      { id: 'd_demo_home', name: 'Pag-IBIG Housing Loan', type: 'mortgage', balance: 1850000, originalPrincipal: 1850000, interestMethod: 'diminishing', minPayment: 16200, monthlyRate: 0.52, apr: 6.24, dueDay: 5, notes: '3-year repricing housing loan', createdAt: 1700000000000 }
-    ];
+    state.debts = JSON.parse(JSON.stringify(SAMPLE_DEBTS));
+    state.selectedSimDebtIds = state.debts.map(d => d.id);
+    state.bills = JSON.parse(JSON.stringify(SAMPLE_BILLS));
+    state.settings.baseCurrency = 'PHP';
+    state.selectedWalletId = 'all';
 
-    state.bills = [
-      { id: 'b_demo_meralco', name: 'Meralco Electric Bill', category: 'Electricity', amount: 6850, dueDay: 14, walletId: 'w_bpi', isAutoPay: false, notes: 'Customer Account # 1042-8891-03', createdAt: 1700000000000 },
-      { id: 'b_demo_pldt', name: 'PLDT Home Fiber 200Mbps', category: 'Internet', amount: 2099, dueDay: 20, walletId: 'w_gcash', isAutoPay: true, notes: 'Account # 02-8891-4420', createdAt: 1700000000000 },
-      { id: 'b_demo_maynilad', name: 'Maynilad Water Services', category: 'Water', amount: 840, dueDay: 8, walletId: 'w_gcash', isAutoPay: false, notes: 'Water utility service invoice', createdAt: 1700000000000 },
-      { id: 'b_demo_netflix', name: 'Netflix Premium 4K UHD', category: 'Subscriptions', amount: 549, dueDay: 28, walletId: 'w_gcash', isAutoPay: true, notes: 'Monthly family subscription', createdAt: 1700000000000 }
-    ];
-
-    if (window.BB_CORE?.saveToStorage) window.BB_CORE.saveToStorage();
-
-    const form = document.getElementById('transactionForm');
-    if (form) form.reset();
-    const dateInput = document.getElementById('entryDate');
-    if (dateInput) dateInput.value = today;
-    const txSelect = document.getElementById('entryCurrencySelect');
+    const baseSelect = document.getElementById('baseCurrencySelect');
+    const txSelect = document.getElementById('txCurrencySelect');
+    if (baseSelect) baseSelect.value = 'PHP';
     if (txSelect) txSelect.value = 'PHP';
 
     if (window.BB_CORE) {
